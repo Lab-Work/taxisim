@@ -25,8 +25,8 @@ C98556CF31B2CE2C9C85A1FC57B8117C,02C57D2D0045A3B46D9D48B333F9970F,VTS,1,,2013-01
 def distance(lat1, long1, lat2, long2):
 	diffLat = float(lat1) - float(lat2)
 	diffLong = float(long1) - float(long2)
-	latMiles = diffLat * 69.1702473106
-	longMiles = diffLong * 52.4511197073
+	latMiles = diffLat * 111194.86461 #meters per degree latitude, an approximation  based off our latitude and longitude
+	longMiles = diffLong * 84253.1418965 #meters per degree longitude, an approximation  based off our latitude and longitude
 	return sqrt(latMiles * latMiles + longMiles * longMiles)
 
 #Based off its format in the CSV file creates an actual datetime object

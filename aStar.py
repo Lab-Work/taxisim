@@ -7,15 +7,15 @@ import csv
 import timeit
 import subprocess
 
-#TODO: TEST THE NEW ASTAR ALGORITHM
 
-#Standard Euclidean distance multiplied given our region of space (NYC), where I converted it to a plane using Spherical -> cartesian coordinates and found the coefficient factor to be 69.1702473106 miles per degree latitude and to be 52.4511197073 miles per degree longitude
+#Standard Euclidean distance multiplied given our region of space (NYC), where I converted it to a plane using Spherical -> cartesian coordinates.
 def distance(lat1, long1, lat2, long2):
 	diffLat = float(lat1) - float(lat2)
 	diffLong = float(long1) - float(long2)
-	latMiles = diffLat * 69.1702473106
-	longMiles = diffLong * 52.4511197073
+	latMiles = diffLat * 111194.86461 #meters per degree latitude, an approximation  based off our latitude and longitude
+	longMiles = diffLong * 84253.1418965 #meters per degree longitude, an approximation  based off our latitude and longitude
 	return sqrt(latMiles * latMiles + longMiles * longMiles)
+
 
 
 #Finds if a trip's data is out of bounds of our node data (nodes have region centered at (x,y)  with radius r_1, trips are sporadic)
@@ -62,24 +62,12 @@ def resetNodes(arrNodes):
 			node.bestDistance = 0
 			node.bestTime = 0
 
-def findLength(arr):
-	if arr == "No Path Found":
-		print "COULDN'T FIND PATH"
-		return 10000000
-	totalLength = 0
-	for i in range(len(arr) - 1):
-		currNode = arr[i]
-		nextNode = arr[i + 1]
-		totalLength += float(currNode.distanceConnections[nextNode])
-	return totalLength
-
 def aStar(startLong, startLat, endLong, endLat, gridOfNodes, nodeInfo, N, fastestSpeed):
 	node1 = findNodes(startLong, startLat, gridOfNodes, nodeInfo, N)
 	node2 = findNodes(endLong, endLat, gridOfNodes, nodeInfo, N)
 	if node1 == None or node2 == None:
 		print "COULDN'T FIND NODE"
 		return 10000000
-	#return findLength(findShortestPath(node1, node2))
 	return findShortestPath(node1, node2, fastestSpeed)
 
 #Returns the shortest path between two nodes (Can modify to return the length instead, anything really) Using the A* algorithm
@@ -123,7 +111,8 @@ def findShortestPath(startNode, endNode, fastestSpeed):
 			if not connectedNode in nodesToSearch2:
 				connectedNode.cameFrom = currNode
 				connectedNode.bestTime = tentativeBestSoFar
-				nodesToSearch.put((distance(connectedNode.lat, connectedNode.long, endNode.lat, endNode.long)/fastestSpeed + currNode.bestTime, connectedNode))
+				#The heuristic here needs to be the shortest time possible, so we take the shortest distance (Euclidean) and divide it by 					the fastest possible street (the fastest velocity) 
+				nodesToSearch.put((distance(connectedNode.lat, connectedNode.long, endNode.lat, endNode.long)/fastestSpeed + 										currNode.bestTime, connectedNode))
 				nodesToSearch2.add(connectedNode)
 			if tentativeBestSoFar < connectedNode.bestTime:
 				connectedNode.cameFrom = currNode

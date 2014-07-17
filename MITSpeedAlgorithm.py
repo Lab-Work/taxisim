@@ -16,17 +16,17 @@ def findAdjacent(nodeTuple, dictOfStreets):
 	allAdjacent = set()
 	for node in nodeTuple[0].distanceConnections:
 		if (nodeTuple[0].id, node.id) in dictOfStreets:
-			allAdjacent.add(nodeTuple[0], node)
+			allAdjacent.add((nodeTuple[0], node))
 	for node in nodeTuple[0].backwardsConnections:
 		if (node.id, nodeTuple[0].id) in dictOfStreets:
-			allAdjacent.add(node, nodeTuple[0])
+			allAdjacent.add((node, nodeTuple[0]))
 	for node in nodeTuple[1].distanceConnections:
 		if (nodeTuple[1].id, node.id) in dictOfStreets:
-			allAdjacent.add(nodeTuple[1], node)
+			allAdjacent.add((nodeTuple[1], node))
 	for node in nodeTuple[1].backwardsConnections:
 		if (node.id, nodeTuple[1].id) in dictOfStreets:
-			allAdjacent.add(node, nodeTuple[1])
-	return numAdjacent
+			allAdjacent.add((node, nodeTuple[1]))
+	return allAdjacent
 
 def getAllStreets(gridOfNodes):
 	allStreets = set()
@@ -164,7 +164,7 @@ nodeInfo = getNodeRange()
 start = timeit.default_timer()
 i = 0
 for trip in tAgg:
-	if i > 1000:
+	if i > 50:
 		break
 	path = aStar(trip.startLong, trip.startLat, trip.endLong, trip.endLat, gridOfNodes, nodeInfo, N, fastestSpeed)
 	trip.nodeList = path
@@ -285,6 +285,8 @@ while again:
 			NewRelError += abs(etPrime - trip.tripTime)/trip.tripTime
 		#Our new times are more accurate - time to redo everything
 		if NewRelError < RelError:
+			#We are going to have a new fastest speed
+			fastestSpeed = -1
 			RelError = NewRelError
 			#Since our new times are better, we ReUpdate the speed based off these new times
 			for ID in dictOfStreets:
@@ -297,6 +299,7 @@ while again:
 				nodeTuple[0].speedConnections[nodeTuple[1]] = newSpeed
 			again = True
 		else:
+			#Continue reducing k
 			iterInnerLoop += 1
 			k = 1 + (k - 1) * .75
 			if k < 1.0001:
@@ -329,7 +332,8 @@ for street in allStreets:
 	if (street[0].id, street[1].id) not in dictOfStreets:
 		allAdjacent = findAdjacent(street, dictOfStreets)
 		unusedStreets.append((len(allAdjacent), street))
-unusedStreets.sort(key = lambda street: street[0], reversed = True)
+unusedStreets.sort(key = lambda street: street[0])
+unusedStreets = unusedStreets[::-1]
 #We now set every street in order, averaging the velocity along each street and the times, then assigning it to the usedStreet set
 for street in unusedStreets:
 	currPair = street[1]
