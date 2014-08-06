@@ -1,13 +1,7 @@
 class trip:
 
-#WHAT A TRIP CONSISTS OF 
-#medallion,tripSeconds,trip_distance,pickup_longitude,pickup_latitude,dropoff_longitude,dropoff_latitude,startNodeID,endNodeID,num_repeated,
-#list_of_nodes,dict_street_to_node,time_of_trip
-
-#num_repeated is the number of trips that this trip used to be before it was condensed
-#list_of_nodes is the list of nodes traversed in order between the startNode and endNode
-#dict_street_to_node is a dictionary that, given the street ID (startNode.id, endNode.id), will return the two nodes (startNode, endNode)
-#time_of_trip - how long the trip is estimated last
+#WHAT AN ARRAYFROMCSV CONSISTS OF 
+#medallion,tripSeconds,trip_distance,pickup_longitude,pickup_latitude,dropoff_longitude,dropoff_latitude,startNodeID,endNodeID
 
 	def __init__(self, arrFromCSV):
 		self.medallion	= arrFromCSV[0]

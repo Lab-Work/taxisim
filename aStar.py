@@ -31,7 +31,7 @@ def findNodes(LONG, LAT, gridOfNodes, NODEINFO, N):
 		return None	
 	#Node closest to coords and its distance
 	bestNode = None
-	bestDistance = 10000
+	bestDistance = 1000000
 	i = int(float(LONG - NODEINFO[3]) * N/ float(NODEINFO[2] - NODEINFO[3]))
 	j = int(float(LAT - NODEINFO[1]) * N/ float(NODEINFO[0] - NODEINFO[1]))
 
@@ -54,13 +54,12 @@ def findNodes(LONG, LAT, gridOfNodes, NODEINFO, N):
 					bestDistance = currDistance
 	return bestNode
 
-#Every node in array nodes gets reset so it has no distance from anything and came from nothing (used to reset after making the path)
+#Every node in array nodes gets reset so it has no distance from anything, no time from anything, and came from nothing (used to reset after making the path)
 def resetNodes(arrNodes):
 	for node in arrNodes:
 		if node != None:
 			node.cameFrom = None
-			node.bestDistance = 0
-			node.bestTime = 0
+			node.bestTime = float("INF")
 
 def aStar(startLong, startLat, endLong, endLat, gridOfNodes, nodeInfo, N, fastestSpeed):
 	node1 = findNodes(startLong, startLat, gridOfNodes, nodeInfo, N)
@@ -79,7 +78,7 @@ def findShortestPath(startNode, endNode, fastestSpeed):
 
 	#Nodes we intend to search (somehow connected to graph so far). We treat this as a priority queue: the one that has the potential to be closest (has best distance from the startNode/is closest to the endNode) is treated next
 	nodesToSearch = Queue.PriorityQueue()
-	nodesToSearch.put((startNode.bestTime, startNode))
+	nodesToSearch.put((0, startNode))
 	nodesToSearch2 = set()
 	nodesToSearch2.add(startNode)
 	while not nodesToSearch.empty():
@@ -104,7 +103,7 @@ def findShortestPath(startNode, endNode, fastestSpeed):
 			if connectedNode in searchedNodes:
 				continue
 
-			#Checks distance thus far and the best case distane between this point and the endpoint (note that someNode.bestDistance 				refers to the actual distance from the startNode, as opposed to Euclidean)
+			#Checks distance thus far and the best case distane between this point and the endpoint
 			tentativeBestSoFar = float(currNode.timeConnections[connectedNode]) + currNode.bestTime
 
 			#If we haven't queued it up to search yet, queue it up now. Otherwise, for both of the next two if statements, place the best 				path we've found thus far into that node
@@ -126,7 +125,7 @@ def findShortestPath(startNode, endNode, fastestSpeed):
 #Given where the nodes came from, rebuilds the path that was taken to the final node
 def rebuildPath(node):
 	arr = []
-	while node.cameFrom != None:
+	while node != None:
 		arr.append(node)
 		node = node.cameFrom
 	return arr[::-1]

@@ -53,6 +53,7 @@ class taxi:
 		self.id = ID
 		self.killTime = KILLTIME
 		#NODEINFO = [MaxLat, MinLat, MaxLong, MinLong]
+		#TODO: Make sure these taxis don't spawn far away from civilization 
 		self.lat = (NODEINFO[0] - NODEINFO[1]) * random.random() + NODEINFO[1]
 		self.long = (NODEINFO[2] - NODEINFO[3]) * random.random() + NODEINFO[3]
 
