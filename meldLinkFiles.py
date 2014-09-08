@@ -1,9 +1,7 @@
 from node import *
 import csv
 
-#2011-05-08
-
-#Once you have the new link data (speed and such), this is how you merge the old data with the new data!
+#Once you have the new link data (speed and time), this is how you merge the old data with the new data!
 
 oldLinks = csv.reader(open("links.csv", 'rb'))
 speedLinks = csv.reader(open("newLinks.csv", 'rb'))

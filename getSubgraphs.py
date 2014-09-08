@@ -1,6 +1,6 @@
 import csv
 
-from node import getSetOfNodes
+from node import getCorrectNodes
 
 #This entire thing is an implementation of Kosaraju's Algorithm for finding strongly connected components. If there are weakly connected components we would like to rid ourselves of them
 #http://en.wikipedia.org/wiki/Kosaraju%27s_algorithm
@@ -42,12 +42,12 @@ class stack:
 			node.discovered = False
 
 
-def getFirstFalse(setOfNodes):
-	i = 0
-	for node in setOfNodes:
-		if node.discovered == False:
-			return node
-		i += 1
+def getFirstFalse(gridOfNodes):
+	for column in gridOfNodes:
+		for region in column:
+			for node in region.Nodes:
+				if node.discovered == False:
+					return node
 	return None
 
 #An implementation of DFS, whether on the transpose graph or the actual graph
@@ -74,9 +74,11 @@ def DFS(node, STACK, transpose):
 			if currNode == tempStack.lastElem():
 				STACK.push(tempStack.pop())
 
-def resetNodes(setOfNodes):
-	for node in setOfNodes:
-		node.discovered = False
+def resetNodes(gridOfNodes):
+	for column in gridOfNodes:
+		for region in column:
+			for node in region.nodes:
+				node.discovered = False
 
 newFile = open("Blacklist.csv", 'wb')
 newFileWriter = csv.writer(newFile)
@@ -84,18 +86,18 @@ headers = ["SubgraphNumber", "Type", "NodeID", "FromLong", "FromLat","ToLong", "
 newFileWriter.writerow(headers)
 
 #All nodes in NYC
-setOfNodes = getSetOfNodes()
+gridOfNodes = getCorrectNodes(20, "speeds_per_hour/0_0", None)
 stackOfNodes = stack()
-node = getFirstFalse(setOfNodes)
+node = getFirstFalse(gridOfNodes)
 
 #This is a depth first search upon the graph -> The moment one node terminates, it is added to the stack. If component terminates, it will continue on to the next component until all components terminate.
 while node != None:
 	DFS(node, stackOfNodes, False)
-	node = getFirstFalse(setOfNodes)
+	node = getFirstFalse(gridOfNodes)
 
 #We set every node to undiscovered again
 stackOfNodes.resetNodes()
-resetNodes(setOfNodes)
+resetNodes(gridOfNodes)
 subGraphNumber = 0
 
 #The latter part of of Kosaraju's algorithm. We perform a DFS upon each object, starting at the top of the stack. Once that particular DFS terminates, we know that is a strongly connected component and write it to the CSV file (all under the same subgraph number).

@@ -44,9 +44,6 @@ workers = [None] * NUM_PC
 killTime = datetime(year = 2011, month = 5, day = 15) 
 latestTime = datetime(year = 2011, month = 5, day = 8)
 
-latestTime = latestTime + timedelta(days = 3, hours = 14)
-
-latestTime = latestTime - timedelta(hours = 1)
 while latestTime < killTime:
 			
 	created_job = False

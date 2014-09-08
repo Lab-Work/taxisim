@@ -1,7 +1,7 @@
 import csv
 import timeit
 from datetime import *
-from node import getInitialNodes, getNodeRange
+from node import getCorrectNodes, getNodeRange
 from aStar import aStar
 from trip import trip
 from math import sqrt
@@ -175,7 +175,7 @@ def MITSpeedAlgorithm(readFrom, startTime, killTime, fileName):
 	initSpeed = 5 #meters per second
 	N = 20
 	#Gets all of the nodes
-	gridOfNodes = getInitialNodes(N, initSpeed)
+	gridOfNodes = getCorrectNodes(N, None, None)
 	nodeInfo = getNodeRange()
 	tripFile = csv.reader(open(readFrom, 'rb'))
 	tAgg = []
@@ -200,11 +200,11 @@ def MITSpeedAlgorithm(readFrom, startTime, killTime, fileName):
 					continue
 				newEntry = (beginNode.id, endNode.id)
 				dictionaryCab[newEntry] = row
-				try:
+				if newEntry in dictionaryTimeAgg:
 					dictionaryTimeAgg[newEntry] += float((createdatetime(row[6]) - createdatetime(row[5])).seconds)
 					dictionaryDistance[newEntry] += float(row[9])
 					dictionaryCounter[newEntry] += 1
-				except(KeyError):
+				else:
 					dictionaryTimeAgg[newEntry] = float((createdatetime(row[6]) - createdatetime(row[5])).seconds)
 					dictionaryDistance[newEntry] = float(row[9])
 					dictionaryCounter[newEntry] = 1
@@ -308,9 +308,9 @@ def MITSpeedAlgorithm(readFrom, startTime, killTime, fileName):
 			aTrip.nodeList = path
 			aTrip.nodeDict = buildDictionary(path)
 			for ID in aTrip.nodeDict:
-				try:
+				if ID in dictOfStreets:
 					dictOfStreets[ID][0].add(aTrip)
-				except(KeyError):
+				else:
 					dictOfStreets[ID] = (set(), 0)
 					dictOfStreets[ID][0].add(aTrip)
 			aTrip.estTime = findTime(path)
@@ -381,6 +381,13 @@ def MITSpeedAlgorithm(readFrom, startTime, killTime, fileName):
 					print stop - start
 					break
 
+	#TODO: TEST TO MAKE SURE TIMES ARE UP-TO-DATE
+	for column in gridOfNodes:
+		for region in column:
+			for node in region.nodes:
+				for connection in node.timeConnections:
+					node.timeConnections[connection] = node.distanceConnections[connection] / node.speedConnections[connection]
+
 	#####################################
 	#									#	
 	#				PART 6:				#
@@ -446,5 +453,3 @@ def MITSpeedAlgorithm(readFrom, startTime, killTime, fileName):
 		newArr = [nodeTuple[0].id, nodeTuple[1].id, nodeTuple[0].distanceConnections[nodeTuple[1]], nodeTuple[0].speedConnections[nodeTuple[1]], nodeTuple[0].timeConnections[nodeTuple[1]]]
 		linkFile.writerow(newArr)
 
-if __name__ == "__main__":
-	MITSpeedAlgorithm("someTrips.csv", "newLinks2.csv")

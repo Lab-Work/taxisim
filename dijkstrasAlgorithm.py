@@ -4,6 +4,8 @@ import Queue
 import csv
 import timeit
 
+#An implementation of multi-origin dijkstra
+
 #Assigns each Boundary node an index in the list
 def initializeDictionary(listOfBoundaryNodes):
 	i = 0
@@ -21,14 +23,13 @@ def initializeNodes(dictOfIndices, listOfBoundaryNodes, gridOfNodes):
 				#Each node needs a distance from each boundary node, all starting at infinity
 				node.timeFromBoundaryNode = [float("INF")] * len(listOfBoundaryNodes)
 				node.arcFlagPaths = [None] * len(listOfBoundaryNodes)
-				try:
+				if node in dictOfIndices:
 					#If it's in the dictionary, it's a boundary node, and thus must be 0 away from itself
 					index = dictOfIndices[node]
 					node.timeFromBoundaryNode[index] = 0
 					node.wasUpdated.add(index)
-				except(KeyError):
-					pass
 
+#Keeps a dictionary of how far away a given node is away from a given boundary node
 def distanceDictionary(dictOfIndices, listOfBoundaryNodes, gridOfNodes):
 	distDict = dict()
 	for boundNode in listOfBoundaryNodes:
@@ -47,6 +48,8 @@ def resetNodes(arrNodes):
 			node.bestTime = float("INF")
 			node.arcFlagPaths = []
 			node.timeFromBoundaryNodes = []
+			node.inQueue = False
+			node.wasUpdated = set()
 
 #Basically creates a tree rooted at the boundary node where every edge in the tree is an arcflag
 def dijkstra(listOfBoundaryNodes, gridOfNodes):
@@ -63,7 +66,6 @@ def dijkstra(listOfBoundaryNodes, gridOfNodes):
 	for node in listOfBoundaryNodes:
 		nodesToSearch.put((0, node))
 		node.inQueue = True
-	 
 	i = 0
 	while not nodesToSearch.empty():
 		#Gets the node closest to the end node in the best case
@@ -86,12 +88,11 @@ def dijkstra(listOfBoundaryNodes, gridOfNodes):
 					connectedNode.arcFlagPaths[index] = currNode
 					connectedNode.timeFromBoundaryNode[index] = tentativeBestSoFar
 					if not connectedNode.inQueue:
+						#Sorts them by their smallest value if they are not in the queue
 						nodesToSearch.put((connectedNode.findMinBoundaryTime(), connectedNode))
 						connectedNode.inQueue = True
 		currNode.wasUpdated = set()
-	distDict = distanceDictionary(dictOfIndices, listOfBoundaryNodes, gridOfNodes)
 	setArcFlags(gridOfNodes)
-	return distDict
 
 #Given where the nodes came from, rebuilds the path that was taken to the final node
 def setArcFlags(gridOfNodes):

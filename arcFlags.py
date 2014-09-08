@@ -1,13 +1,11 @@
-from node import node
+from node import node, getNodeRange
 from math import sqrt
-from grid import gridRegion
+from grid import gridRegion, setUpGrid
 from trip import trip
 import Queue
 import csv
-import timeit
-import subprocess
 
-#Normal A*, used during MITProcesses
+#USES A COMBINATION OF A* AND ARCFLAGS TO ROUTE FROM ONE PLACE TO ANOTHER (ALSO FINDS START AND END NODES)
 
 #Standard Euclidean distance multiplied given our region of space (NYC), where I converted it to a plane using Spherical -> cartesian coordinates.
 def distance(lat1, long1, lat2, long2):
@@ -18,7 +16,7 @@ def distance(lat1, long1, lat2, long2):
 	return sqrt(latMiles * latMiles + longMiles * longMiles)
 
 def heuristic(connectedNode, endNode, fastestSpeed):
-	return distance(connectedNode.lat, connectedNode.long, endNode.lat, endNode.long) / fastestSpeed
+	return distance(connectedNode.lat, connectedNode.long, endNode.lat, endNode.long)/fastestSpeed
 
 #Finds if a trip's data is out of bounds of our node data (nodes have region centered at (x,y)  with radius r_1, trips are sporadic)
 def outOfBounds(LONG, LAT, NODEINFO):
@@ -63,9 +61,7 @@ def resetNodes(arrNodes):
 			node.cameFrom = None
 			node.bestTime = float("INF")
 
-
-#Finds nodes, then finds the path it took
-def aStar(startLong, startLat, endLong, endLat, gridOfNodes, nodeInfo, N, fastestSpeed):
+def arcFlags(startLong, startLat, endLong, endLat, gridOfNodes, nodeInfo, N, fastestSpeed):
 	node1 = findNodes(startLong, startLat, gridOfNodes, nodeInfo, N)
 	node2 = findNodes(endLong, endLat, gridOfNodes, nodeInfo, N)
 	if node1 == None or node2 == None:
@@ -76,6 +72,7 @@ def aStar(startLong, startLat, endLong, endLat, gridOfNodes, nodeInfo, N, fastes
 #Returns the shortest path between two nodes (Can modify to return the length instead, anything really) Using the A* algorithm
 #http://en.wikipedia.org/wiki/A*_search_algorithm
 def findShortestPath(startNode, endNode, fastestSpeed):
+
 	#Nodes that we've already traversed and thus will not search again
 	searchedNodes = set()
 
@@ -83,12 +80,14 @@ def findShortestPath(startNode, endNode, fastestSpeed):
 	nodesToSearch = Queue.PriorityQueue()
 	nodesToSearch.put((0, startNode))
 	nodesToSearch2 = set()
-	startNode.bestTime = 0
 	nodesToSearch2.add(startNode)
+	startNode.bestTime = 0
 	while not nodesToSearch.empty():
 		#Gets the node closest to the end node in the best case
 		currNode = nodesToSearch.get()[1]
 		searchedNodes.add(currNode)
+#		nodesToSearch2.remove(currNode)
+
 		#End of the path - we found it! Now we just need to reset all the nodes so they are at their default (no distance, no 			camefrom)
 		if currNode == endNode:
 			#This returns a list of Nodes, in order of traversal (finalPath[0] = startNode, finalPath[len(finalPath) - 1] = endNode)
@@ -96,9 +95,11 @@ def findShortestPath(startNode, endNode, fastestSpeed):
 			resetNodes(nodesToSearch2)
 			resetNodes(searchedNodes)
 			return finalPath
-
-		#Look through all of its neighbors
-		for connectedNode in currNode.timeConnections:
+		for connectedNode in currNode.speedConnections:
+			#THE ARCFLAGS PORTION
+			if currNode.isArcFlags[connectedNode][endNode.region] == 0:
+				if currNode.region != endNode.region:
+					continue
 
 			#If we've searched it before or it is nonexistant, continue
 			if currNode.timeConnections[connectedNode] <= 0:
@@ -128,3 +129,6 @@ def rebuildPath(node):
 		arr.append(node)
 		node = node.cameFrom
 	return arr[::-1]
+
+
+

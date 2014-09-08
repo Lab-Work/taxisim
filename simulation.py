@@ -6,7 +6,7 @@ import sys
 import random
 from math import sqrt
 
-from node import node, getNodes, getNodeRange
+from node import node, getCorrectNodes, getNodeRange
 from aStar import aStar
 from windingFactor import estimateActual, estimateTime
 """
@@ -83,10 +83,10 @@ class simulation:
 	
 	def __init__(self):
 		#In order to quickly facilitate looking through the map, we have broken it up into an NxN grid. self.gridSize = N.
-		self.gridSize = 18
+		self.gridSize = 20
 
 		#The grid object, which contain gridRegions that contain nodes that represent intersections.
-		self.grid = getNodes(self.gridSize)
+		self.grid = getCorrectNodes(self.gridSize, None, None)
 
 		#The maximum and minimum latitude and longitude represented in the nodes
 		self.nodeInfo = getNodeRange()
@@ -295,11 +295,6 @@ class simulation:
 		self.taxisInUse.discard(taxi)
 		self.taxisAvailable.add(taxi)
 
-#10 long, 11 lat
-#Sort by distance, not waiting
-		else:
-			print "Alec will TOTALLY implement this later"
-
 	#When activated, a taxi will be added to the available taxis
 	def Wakeup(self, taxi, ARRAYNOTNEEDED, TIMENOTNEEDED):
 		self.taxisAvailable.add(taxi)
@@ -329,22 +324,3 @@ if __name__ == "__main__":
 	theSimulation = simulation()
 	theSimulation.runSimulation()
 
-
-
-"""
-	def getAllTaxis(self):
-		global FILENAMES
-		for FILENAME in FILENAMES:
-			allTrips = open(FILENAME, 'r')
-			allTaxis = set()
-			i = 0
-			for row in allTrips:
-			#	if i % 100000 == 0:
-			#		print str(i) + "/10000000 done!"
-				if i > TRIPSTOREADATATIME:
-					break
-			#	self.taxisOff.add(taxi(taxiID, KILLTIMENEEDED))
-			#For now, all taxis are available
-				self.taxisAvailable.add(taxi(row[0], 0))
-				i += 1
-"""
