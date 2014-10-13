@@ -1,5 +1,6 @@
 # WHAT AN ARRAYFROMCSV CONSISTS OF:
-# medallion,tripSeconds,trip_distance,pickup_longitude,pickup_latitude,dropoff_longitude,dropoff_latitude,start_nodeID,end_nodeID
+# medallion,tripSeconds,trip_distance,pickup_longitude,pickup_latitude,
+# dropoff_longitude,dropoff_latitude,start_nodeID,end_nodeID
 
 
 class Trip:
