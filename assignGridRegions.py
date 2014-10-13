@@ -15,7 +15,7 @@ for column in grid_of_nodes:
     i += 1
 # Will contain all the normal CSV info for the nodes, plus a region number
 list_of_nodes = []
-node_file = csv.reader(open("nodes.csv", 'rb'))
+node_file = csv.reader(open("nyc_map4/nodes.csv", 'rb'))
 header = True
 for node in node_file:
     if header:
@@ -30,7 +30,7 @@ for node in node_file:
         # In case the node has an extra element, which occasionally happened
         curr_node[10] = curr_region
     list_of_nodes.append(curr_node)
-node_file = csv.writer(open("nodes.csv", 'wb'))
+node_file = csv.writer(open("nyc_map4/newNodes.csv", 'wb'))
 headers = ["node_id", "is_complete", "num_in_links", "num_out_links",
            "osm_traffic_controller", "xcoord", "ycoord", "osm_changeset",
            "birth_timestamp", "death_timestamp", "grid_region_id"]

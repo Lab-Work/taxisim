@@ -3,6 +3,8 @@ from dijkstrasAlgorithm import dijkstra
 import csv
 import timeit
 
+import pdb
+
 
 # Resets the arcflag set in dijkstras algorithm
 def reset_arc_flags(grid_of_nodes):

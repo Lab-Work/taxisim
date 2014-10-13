@@ -81,11 +81,11 @@ def dijkstra(boundary_nodes, grid_of_nodes):
     for node in boundary_nodes:
         nodes_to_search.put((0, node))
         node.in_queue = True
-    i = 0
+    counter = 0
     while not nodes_to_search.empty():
         # Gets the node closest to the end node in the best case
-        i += 1
-        if i % 10000 == 0:
+        counter += 1
+        if counter % 10000 == 0:
             print nodes_to_search.qsize()
         curr_node = nodes_to_search.get()[1]
         curr_node.in_queue = False

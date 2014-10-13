@@ -3,8 +3,8 @@ import csv
 # Once you have the new link data (speed and time), this is how you merge the
 # old data with the new data!
 
-old_links = csv.reader(open("links.csv", 'rb'))
-speed_links = csv.reader(open("newLinks.csv", 'rb'))
+old_links = csv.reader(open("nyc_map4/links.csv", 'rb'))
+speed_links = csv.reader(open("nyc_map4/newLinks.csv", 'rb'))
 old_links_dict = dict()
 
 for row in old_links:
