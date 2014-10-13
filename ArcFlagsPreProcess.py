@@ -1,9 +1,7 @@
 from Node import get_correct_nodes
-from dijkstrasAlgorithm import dijkstra
+from DijkstrasAlgorithm import dijkstra
 import csv
 import timeit
-
-import pdb
 
 
 # Resets the arcflag set in dijkstras algorithm
@@ -66,7 +64,7 @@ for column in grid_of_nodes:
                                 str(node.id), str(connection.id))][i] = 1
         reset_arc_flags(grid_of_nodes)
         i += 1
-link_file = csv.writer(open("arcFlags/20Regions0_0.csv", 'wb'))
+link_file = csv.writer(open("ArcFlags/20Regions0_0.csv", 'wb'))
 # This is a hexadecimal string that converts region to true or false
 headers = ["start_nodeID", "end_nodeID", "hexStringOfRegions"]
 # RegionNumber   = 0, 1, 2, 3, 4, 5, 6, 7

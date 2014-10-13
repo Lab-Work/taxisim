@@ -2,7 +2,7 @@ import csv
 import timeit
 from datetime import datetime
 from Node import get_correct_nodes, get_node_range
-from aStar import aStar
+import AStar.aStar
 from math import sqrt
 import Trip
 
@@ -284,7 +284,7 @@ def MITSpeedAlgorithm(read_from, start_time, kill_time, fileName):
     #####################################
 
     for trip in t_agg:
-        path = aStar(trip.start_long, trip.start_lat, trip.end_long,
+        path = AStar(trip.start_long, trip.start_lat, trip.end_long,
                      trip.end_lat, grid_of_nodes, node_info, n, max_speed)
         trip.nodeList = path
 
@@ -351,7 +351,7 @@ def MITSpeedAlgorithm(read_from, start_time, kill_time, fileName):
         rel_error = 0
         # We find new paths based off of the new times we got
         for trip in t_agg:
-            path = aStar(trip.start_long, trip.start_lat, trip.end_long,
+            path = AStar(trip.start_long, trip.start_lat, trip.end_long,
                          trip.end_lat, grid_of_nodes, node_info, n, max_speed)
             trip.nodeList = path
             trip.node_dict = build_dictionary(path)

@@ -9,7 +9,7 @@ import random
 from math import sqrt
 
 from Node import get_correct_nodes, get_node_range
-from aStar import aStar
+import AStar.aStar
 from windingFactor import estimateActual, estimateTime  ## can't find it
 """
 medallion, hack_liticense, vendor_id, rate_code, store_and_fwd_flag, pickup_datetime, dropoff_datetime, passenger_count, trip_time_in_secs, trip_distance, pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude, payment_type, fare_amount, surcharge, mta_tax, tip_amount, tolls_amount, total_amount
@@ -248,7 +248,7 @@ class simulation:
                 #We sorted them all by Euclidean distance - if the current best distance is smaller than the current euclidean distance                 (the shortest distance) then we don't need to check anymore as none can be closer
                 if taxi[0] > best_distance or taxi[0] > searchRadius:
                     break
-                currDistance = aStar(taxi[1].long, taxi[1].lat, custLong, custLat, self.grid, self.node_info, self.gridSize)
+                currDistance = AStar(taxi[1].long, taxi[1].lat, custLong, custLat, self.grid, self.node_info, self.gridSize)
                 if currDistance < best_distance:
                     bestTaxi = taxi[1]
                     best_distance = currDistance

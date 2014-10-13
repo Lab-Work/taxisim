@@ -1,11 +1,11 @@
 from Node import get_correct_nodes, get_node_range
-from arcFlags import arcFlags
-from aStar import aStar
+import ArcFlags.arcFlags
+import AStar.aStar
 from Trip import Trip
 import timeit
 import csv
 
-# This file is made for debugging purposes - meant to compare arcFlags to A*
+# This file is made for debugging purposes - meant to compare ArcFlags to A*
 # in terms of accuracy
 
 read_from = "../data_chron/FOIL2013/trip_04.csv"
@@ -30,7 +30,7 @@ for t in trip_file:
     new_trip = Trip(new_trip_list)
     all_trips.append(new_trip)
 grid_arcs = get_correct_nodes(n, "speeds_per_hour/0_0",
-                              "arcFlags/20Regions0_0.csv")
+                              "ArcFlags/20Regions0_0.csv")
 grid_a_star = get_correct_nodes(n, "speeds_per_hour/0_0", None)
 node_info = get_node_range(grid_a_star)
 max_speed = 0
@@ -43,11 +43,11 @@ for column in grid_a_star:
                     max_speed = node.speed_connections[connection]
 all_trips_arcs = []
 all_trips_star = []
-# Get all the aStar trips
+# Get all the AStar trips
 # Get all the arcFlag trips and the time for both
 start = timeit.default_timer()
 for a_trip in all_trips:
-    all_trips_arcs.append(arcFlags(a_trip.start_long, a_trip.start_lat,
+    all_trips_arcs.append(ArcFlags(a_trip.start_long, a_trip.start_lat,
                           a_trip.end_long, a_trip.end_lat, grid_arcs,
                           node_info, n, max_speed))
 stop = timeit.default_timer()
@@ -55,7 +55,7 @@ print stop - start
 i = 0
 start = timeit.default_timer()
 for a_trip in all_trips:
-    all_trips_star.append(aStar(a_trip.start_long, a_trip.start_lat,
+    all_trips_star.append(AStar(a_trip.start_long, a_trip.start_lat,
                           a_trip.end_long, a_trip.end_lat, grid_a_star,
                           node_info, n, max_speed))
 stop = timeit.default_timer()

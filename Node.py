@@ -78,7 +78,7 @@ class Node:
         return min(self.time_from_boundary_node)
 
 
-# For converting the regions in the arcFlags csv file back into binary from hex
+# For converting the regions in the ArcFlags csv file back into binary from hex
 def hex_deconverter(hex_string):
     newString = bin(int(hex_string, 16))[2:]
     newList = map(int, list(newString))
@@ -238,7 +238,7 @@ def get_node_info(arr):
     return node_info
 
 
-# If no arcFlags, arc_flag_file is None
+# If no ArcFlags, arc_flag_file is None
 def get_correct_nodes(num_divisions, time_file, arc_flag_file):
     nodes = set_up_nodes(time_file, arc_flag_file)
     if time_file is None:

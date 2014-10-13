@@ -39,7 +39,7 @@ num_pc = 7
 
 workers = [None] * num_pc
 
-# When we know how to end the simulation
+# When we know how to end the Simulation
 killTime = datetime(year=2011, month=5, day=15)
 latest_time = datetime(year=2011, month=5, day=8)
 
