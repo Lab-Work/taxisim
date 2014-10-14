@@ -9,9 +9,9 @@ import MITSpeedAlgorithm
 start_time = datetime.now()
 
 
-class parse_file_process(process):
+class ParseFileProcess(process):
     def __init__(self, direc, dateTime):
-        super(parse_file_process, self).__init__()
+        super(ParseFileProcess, self).__init__()
         self.file_to_read = "../data_chron/FOIL2011/trip_05.csv"
         # Directory + weekday (0 = Sunday, 6 = Saturday) + hour (0-23)
         self.path = direc
@@ -52,7 +52,7 @@ while latest_time < killTime:
                 if workers[i] is not None:
                     workers[i].join()
                 latest_time = latest_time + timedelta(hours=1)
-                workers[i] = parse_file_process(tmp_dir, latest_time)
+                workers[i] = ParseFileProcess(tmp_dir, latest_time)
 
                 # Causes the run file to begin
                 workers[i].start()
