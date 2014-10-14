@@ -65,4 +65,3 @@ while latest_time < killTime:
 for w in workers:
     if(w is not None and w.is_alive()):
         w.join()
-

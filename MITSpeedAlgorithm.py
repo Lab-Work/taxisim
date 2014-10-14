@@ -2,8 +2,8 @@ import csv
 import timeit
 from datetime import datetime
 from Node import get_correct_nodes, get_node_range
+from GraphLib import distance
 import AStar
-from math import sqrt
 import Trip
 
 ##########################################
@@ -11,20 +11,6 @@ import Trip
 #               FUNCTIONS                #
 #                                        #
 ##########################################
-
-
-# Standard Euclidean distance multiplied given our region of space (NYC),
-# where I converted it to a plane using Spherical -> cartesian coordinates.
-def distance(lat1, long1, lat2, long2):
-    diff_lat = float(lat1) - float(lat2)
-    diff_long = float(long1) - float(long2)
-    # meters per degree latitude
-    # an approximation  based off our latitude and longitude
-    lat_miles = diff_lat * 111194.86461
-    # meters per degree longitude
-    # an approximation  based off our latitude and longitude
-    long_miles = diff_long * 84253.1418965
-    return sqrt(lat_miles * lat_miles + long_miles * long_miles)
 
 
 def out_of_bounds(longitude, latitude, node_info):

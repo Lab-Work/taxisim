@@ -1,22 +1,7 @@
-from math import sqrt
-from Grid import grid_region
 import Queue
+from GraphLib import distance
 
 # Normal A*, used during MITProcesses
-
-
-# Standard Euclidean distance multiplied given our region of space (NYC),
-# where I converted it to a plane using Spherical -> cartesian coordinates.
-def distance(lat1, long1, lat2, long2):
-    diff_lat = float(lat1) - float(lat2)
-    diff_long = float(long1) - float(long2)
-    # meters per degree latitude,
-    # an approximation  based off our latitude and longitude
-    lat_miles = diff_lat * 111194.86461
-    # meters per degree longitude
-    # an approximation  based off our latitude and longitude
-    long_miles = diff_long * 84253.1418965
-    return sqrt(lat_miles * lat_miles + long_miles * long_miles)
 
 
 def heuristic(node, end_node, max_speed):
@@ -129,7 +114,7 @@ def find_shortest_path(start_node, end_node, max_speed):
         # Look through all of its neighbors
         for connected_node in curr_node.time_connections:
 
-            # If we've searched it before or it is non-existant, continue
+            # If we've searched it before or it is non-existent, continue
             if curr_node.time_connections[connected_node] <= 0:
                 continue
             if connected_node in searchednodes:

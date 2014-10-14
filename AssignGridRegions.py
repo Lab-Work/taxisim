@@ -1,7 +1,7 @@
 import csv
 from Node import get_correct_nodes
 
-# Based off of the gridRegions, writes to the node CSV file the grid_region
+# Based off of the gridRegions, writes to the node CSV file the GridRegions
 grid_of_nodes = get_correct_nodes(20, "speeds_per_hour/0_0", None)
 dist_of_nodes = dict()
 # Iterates through every region / node and assigns them a number

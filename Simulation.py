@@ -6,7 +6,7 @@ import csv
 import timeit
 import sys
 import random
-from math import sqrt
+from GraphLib import distance
 
 from Node import get_correct_nodes, get_node_range
 import AStar.aStar
@@ -22,14 +22,6 @@ C98556CF31B2CE2C9C85A1FC57B8117C,02C57D2D0045A3B46D9D48B333F9970F,VTS,1,,2013-01
 #                                        #
 #########################################
 #########################################
-
-#Standard Euclidean distance calculator for latitude and longitude, which we also convert to miles (based off factors we found converting spherical to cartesian coordinates)
-def distance(lat1, long1, lat2, long2):
-    diff_lat = float(lat1) - float(lat2)
-    diff_long = float(long1) - float(long2)
-    lat_miles = diff_lat * 111194.86461 #meters per degree latitude, an approximation  based off our latitude and longitude
-    long_miles = diff_long * 84253.1418965 #meters per degree longitude, an approximation  based off our latitude and longitude
-    return sqrt(lat_miles * lat_miles + long_miles * long_miles)
 
 #Based off its format in the CSV file creates an actual datetime object
 def create_datetime(DateTime):
