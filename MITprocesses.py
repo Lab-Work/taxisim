@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from multiprocessing import process
 from time import sleep
 
-from MITSpeedAlgorithm import MITSpeedAlgorithm
+import MITSpeedAlgorithm
 
 # 2011-05-08
 

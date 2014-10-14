@@ -1,6 +1,6 @@
 from Node import get_correct_nodes, get_node_range
-import ArcFlags.arcFlags
-import AStar.aStar
+import ArcFlags
+import AStar
 from Trip import Trip
 import timeit
 import csv

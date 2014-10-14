@@ -2,7 +2,7 @@ import csv
 import timeit
 from datetime import datetime
 from Node import get_correct_nodes, get_node_range
-import AStar.aStar
+import AStar
 from math import sqrt
 import Trip
 

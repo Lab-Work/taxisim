@@ -147,7 +147,8 @@ def set_up_nodes(time_file, arc_flag_file):
     arc_flags = None
     if arc_flag_file is not None:
         arc_flags = csv.reader(open(arc_flag_file, 'rb'), delimiter=',')
-    # Dictionary should be start_nodeID->setOfAllLinks that have that start_node
+    # Dictionary should be start_node_id->setOfAllLinks that have that
+    # start_node
     header = True
     for link in all_links:
         if header:

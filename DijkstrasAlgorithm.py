@@ -1,4 +1,4 @@
-from Grid import grid_region, set_up_grid
+from Grid import grid_region
 import Queue
 
 # An implementation of multi-origin dijkstra
