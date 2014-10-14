@@ -4,27 +4,27 @@ import Queue
 # Assigns each Boundary node an index in the list
 def initialize_dictionary(list_of_boundary_nodes):
     i = 0
-    dict_of_indices = dict()
+    index_dict = dict()
     for node in list_of_boundary_nodes:
-        dict_of_indices[node] = i
+        index_dict[node] = i
         i += 1
-    return dict_of_indices
+    return index_dict
 
 
 # Sets up lists of "INF" for each nodes, excluding boundary nodes
-def initialize_nodes(dict_of_indices, list_of_boundary_nodes, grid_of_nodes):
+def initialize_nodes(index_dict, boundary_nodes_list, grid_of_nodes):
     for column in grid_of_nodes:
         for region in column:
             for node in region.nodes:
                 # Each node needs a distance from each boundary node
                 # all starting at infinity
                 node.time_from_boundary_node = [float("INF")] * (
-                    len(list_of_boundary_nodes))
-                node.arc_flag_paths = [None] * len(list_of_boundary_nodes)
+                    len(boundary_nodes_list))
+                node.arc_flag_paths = [None] * len(boundary_nodes_list)
                 try:
                     # If it's in the dictionary, it's a boundary node
                     # and thus must be 0 away from itself
-                    index = dict_of_indices[node]
+                    index = index_dict[node]
                     node.time_from_boundary_node[index] = 0
                     node.was_updated.add(index)
                 except(KeyError):

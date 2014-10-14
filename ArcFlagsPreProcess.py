@@ -1,5 +1,5 @@
 from Node import get_correct_nodes
-from DijkstrasAlgorithm import dijkstra
+from DijkstrasAlgorithm import DijkstrasAlgorithm
 import csv
 import timeit
 
@@ -56,7 +56,7 @@ class ArcFlagsPreProcess:
 
                 start = timeit.default_timer()
                 # Does a multi-dijkstra search to get an arcflag tree
-                dijkstra(set_of_nodes, grid_of_nodes)
+                DijkstrasAlgorithm.dijkstra(set_of_nodes, grid_of_nodes)
                 for column in grid_of_nodes:
                     for grid_region in column:
                         for node in grid_region.nodes:
