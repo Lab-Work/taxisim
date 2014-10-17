@@ -45,6 +45,7 @@ class Node:
         # updated
         self.was_updated = set()
 
+        # For multi-origin dijkstra, storing the time from each boundary node
         self.time_from_boundary_node = []
 
         # For each boundary node path, shows where this particular node came
@@ -53,6 +54,10 @@ class Node:
 
         # Checks if the node is currently in the queue (won't add otherwise)
         self.in_queue = False
+
+        # The number of times this node has been updated since its last
+        # expansion
+        self.update_count = 0
 
     # Given an _id, gives its weight
     def add_connecting_node(self, _id, weight, speed, time):
@@ -74,8 +79,15 @@ class Node:
             self.time_connections[connection] = (
                 self.distance_connections[connection] / init_speed)
 
-    def find_min_boundary_time(self):
+    def get_min_boundary_time(self):
         return min(self.time_from_boundary_node)
+
+    def get_boundary_time_inf_count(self):
+        return self.time_from_boundary_node.count(float("INF"))
+
+    def get_boundary_time_sum(self):
+        return sum([x for x in self.time_from_boundary_node
+                    if x != float("INF")])
 
 
 # For converting the regions in the ArcFlags csv file back into binary from hex

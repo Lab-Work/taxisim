@@ -5,17 +5,17 @@ import Queue
 class DijkstrasAlgorithm:
     # Assigns each Boundary node an index in the list
     @staticmethod
-    def initialize_dictionary(list_of_boundary_nodes):
+    def init_dict(list_of_boundary_nodes):
         i = 0
-        index_dict = dict()
+        boundary_indices = dict()
         for node in list_of_boundary_nodes:
-            index_dict[node] = i
+            boundary_indices[node] = i
             i += 1
-        return index_dict
+        return boundary_indices
 
     # Sets up lists of "INF" for each nodes, excluding boundary nodes
     @staticmethod
-    def initialize_nodes(index_dict, boundary_nodes_list, grid_of_nodes):
+    def initialize_nodes(boundary_indices, boundary_nodes_list, grid_of_nodes):
         for column in grid_of_nodes:
             for region in column:
                 for node in region.nodes:
@@ -24,20 +24,20 @@ class DijkstrasAlgorithm:
                     node.time_from_boundary_node = (
                         [float("INF")] * len(boundary_nodes_list))
                     node.arc_flag_paths = [None] * len(boundary_nodes_list)
-                    if node in index_dict:
+                    if node in boundary_indices:
                         # If it's in the dictionary, it's a boundary node,
                         # and thus must be 0 away from itself
-                        index = index_dict[node]
+                        index = boundary_indices[node]
                         node.time_from_boundary_node[index] = 0
                         node.was_updated.add(index)
 
     # Keeps a dictionary of how far away a given node is away from a given
     # boundary node
     @staticmethod
-    def distance_dictionary(index_dict, boundary_nodes, grid_of_nodes):
+    def distance_dictionary(boundary_indices, boundary_nodes, grid_of_nodes):
         dist_dict = dict()
         for boundnode in boundary_nodes:
-            index = index_dict[boundnode]
+            index = boundary_indices[boundnode]
             for column in grid_of_nodes:
                 for region in column:
                     for node in region.nodes:
@@ -56,19 +56,20 @@ class DijkstrasAlgorithm:
                 node.best_time = float("INF")
                 node.arc_flag_paths = []
                 node.time_from_boundary_nodes = []
-                node.in_queue = False
                 node.was_updated = set()
 
     # Basically creates a tree rooted at the boundary node where every edge in
     # the tree is an arcflag
     @staticmethod
     def dijkstra(boundary_nodes, grid_of_nodes):
+        max_queue_size = 0  # debug
+        expansion_count = 0  # debug
         # Assign each boundary node an i for distance
-        index_dict = DijkstrasAlgorithm.initialize_dictionary(boundary_nodes)
+        boundary_indices = DijkstrasAlgorithm.init_dict(boundary_nodes)
 
         # Gives each node a distance from the boundary nodes, which are
         # initially either INF(infinity) or 0
-        DijkstrasAlgorithm.initialize_nodes(index_dict, boundary_nodes,
+        DijkstrasAlgorithm.initialize_nodes(boundary_indices, boundary_nodes,
                                             grid_of_nodes)
 
         # Nodes we intend to search (somehow connected to graph so far). We
@@ -80,21 +81,35 @@ class DijkstrasAlgorithm:
         # Checks to see if the node is already in the queue (True means it is
         # in it False means it is not)
         for node in boundary_nodes:
-            nodes_to_search.put((0, node))
-            node.in_queue = True
+            nodes_to_search.put((-node.update_count,  # 0
+                                 node.get_min_boundary_time(),  # 0
+                                 node.get_boundary_time_inf_count(),  # n-1
+                                 node.get_boundary_time_sum(),  # 0
+                                 node))
         counter = 0
         while not nodes_to_search.empty():
             # Gets the node closest to the end node in the best case
             counter += 1
+            if (nodes_to_search.qsize() > max_queue_size):
+                max_queue_size = nodes_to_search.qsize()
             if counter % 10000 == 0:
                 print nodes_to_search.qsize()
-            curr_node = nodes_to_search.get()[1]
-            curr_node.in_queue = False
+            queue_item = nodes_to_search.get()
+            old_min_time, old_inf_count, old_sum = queue_item[1:4]
+            curr_node = queue_item[4]
+            if (old_min_time > curr_node.get_min_boundary_time() or
+                    old_inf_count > curr_node.get_boundary_time_inf_count() or
+                    old_sum < node.get_boundary_time_sum()):
+                continue
+
+            # expansion of curr_node starts here
+            expansion_count += 1
             for connected_node in curr_node.backwards_connections:
+                has_updates = False
+                connected_node.update_count = 0
                 for i in curr_node.was_updated:
                     if connected_node.time_connections[curr_node] <= 0:
                         continue
-
                     # Checks distance thus far and the best case distance
                     # between this point and the end point
                     tmp_best = (
@@ -105,18 +120,31 @@ class DijkstrasAlgorithm:
                     # Otherwise, for both of the next two if statements, place
                     # the best path we've found thus far into that node
                     if tmp_best < connected_node.time_from_boundary_node[i]:
+                        has_updates = True
+                        connected_node.update_count += 1
                         connected_node.was_updated.add(i)
                         connected_node.arc_flag_paths[i] = curr_node
                         connected_node.time_from_boundary_node[i] = tmp_best
-                        if not connected_node.in_queue:
-                            # Sorts them by their smallest value if they are
-                            # not in the queue
-                            nodes_to_search.put(
-                                (connected_node.find_min_boundary_time(),
-                                    connected_node))
-                            connected_node.in_queue = True
-            curr_node.was_updated = set()
+                        # Sorts them by their smallest value if they are
+                        # not in the queue
+                if has_updates:
+                    nodes_to_search.put((
+                        # times updated since it was last expanded
+                        -connected_node.update_count,
+                        # minimum time from boundary node
+                        connected_node.get_min_boundary_time(),
+                        # number of infinities in the list
+                        connected_node.get_boundary_time_inf_count(),
+                        # sum of non infinities in the list
+                        connected_node.get_boundary_time_sum(),
+                        # the actual node itself
+                        connected_node))
+            curr_node.was_updated = set()  # end while
+
         DijkstrasAlgorithm.set_arc_flags(grid_of_nodes)
+
+        print "Max Queue Size:", max_queue_size  # debug
+        print "Number of expansions:", expansion_count  # debug
 
     # Given where the nodes came from, rebuilds the path that was taken to the
     # final node

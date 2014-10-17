@@ -2,7 +2,7 @@ import Queue
 
 
 # Assigns each Boundary node an index in the list
-def initialize_dictionary(list_of_boundary_nodes):
+def init_dict(list_of_boundary_nodes):
     i = 0
     index_dict = dict()
     for node in list_of_boundary_nodes:
