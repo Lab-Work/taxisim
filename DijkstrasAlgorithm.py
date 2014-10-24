@@ -106,7 +106,7 @@ class DijkstrasAlgorithm:
             expansion_count += 1
             for connected_node in curr_node.backwards_connections:
                 has_updates = False
-                connected_node.update_count = 0
+                curr_node.update_count = 0
                 for i in curr_node.was_updated:
                     if connected_node.time_connections[curr_node] <= 0:
                         continue
