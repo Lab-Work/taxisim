@@ -48,6 +48,9 @@ class Node:
         # For multi-origin dijkstra, storing the time from each boundary node
         self.time_from_boundary_node = []
 
+        # A snapshot of the time_from_boundary_node from the last expansion
+        self.time_snapshot = []
+
         # For each boundary node path, shows where this particular node came
         # from
         self.arc_flag_paths = []
@@ -58,6 +61,14 @@ class Node:
         # The number of times this node has been updated since its last
         # expansion
         self.update_count = 0
+
+    # Compare time_from_boundary_node with the snapshot from its last expansion
+    def get_domination_value(self):
+        count = 0
+        for i in range(len(self.time_from_boundary_node)):
+            if self.time_from_boundary_node[i] != self.time_snapshot[i]:
+                count = count + 1
+        return count
 
     # Given an _id, gives its weight
     def add_connecting_node(self, _id, weight, speed, time):

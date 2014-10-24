@@ -23,6 +23,9 @@ class DijkstrasAlgorithm:
                     # all starting at infinity
                     node.time_from_boundary_node = (
                         [float("INF")] * len(boundary_nodes_list))
+                    # Store a deep copy snapshot of time_from_boundary_node for
+                    # future comparison
+                    node.time_snapshot = node.time_from_boundary_node[:]
                     node.arc_flag_paths = [None] * len(boundary_nodes_list)
                     if node in boundary_indices:
                         # If it's in the dictionary, it's a boundary node,
@@ -81,11 +84,17 @@ class DijkstrasAlgorithm:
         # Checks to see if the node is already in the queue (True means it is
         # in it False means it is not)
         for node in boundary_nodes:
-            nodes_to_search.put((-node.update_count,  # 0
-                                 node.get_min_boundary_time(),  # 0
-                                 node.get_boundary_time_inf_count(),  # n-1
-                                 node.get_boundary_time_sum(),  # 0
-                                 node))
+            nodes_to_search.put((
+                # times updated since it was last expanded
+                0,
+                # minimum time from boundary node
+                0,
+                # number of infinities in the list
+                len(node.time_from_boundary_node) - 1,
+                # sum of non infinities in the list
+                0,
+                # the actual node itself
+                node))
         counter = 0
         while not nodes_to_search.empty():
             # Gets the node closest to the end node in the best case
@@ -97,6 +106,7 @@ class DijkstrasAlgorithm:
             queue_item = nodes_to_search.get()
             old_min_time, old_inf_count, old_sum = queue_item[1:4]
             curr_node = queue_item[4]
+            # Skip if the item in queue is out-dated
             if (old_min_time > curr_node.get_min_boundary_time() or
                     old_inf_count > curr_node.get_boundary_time_inf_count() or
                     old_sum < node.get_boundary_time_sum()):
@@ -106,7 +116,9 @@ class DijkstrasAlgorithm:
             expansion_count += 1
             for connected_node in curr_node.backwards_connections:
                 has_updates = False
-                curr_node.update_count = 0
+                # Overwrite the snapshot with a copy of the current label
+                curr_node.time_snapshot = (
+                    curr_node.time_from_boundary_node[:])
                 for i in curr_node.was_updated:
                     if connected_node.time_connections[curr_node] <= 0:
                         continue
@@ -121,16 +133,15 @@ class DijkstrasAlgorithm:
                     # the best path we've found thus far into that node
                     if tmp_best < connected_node.time_from_boundary_node[i]:
                         has_updates = True
-                        connected_node.update_count += 1
                         connected_node.was_updated.add(i)
                         connected_node.arc_flag_paths[i] = curr_node
                         connected_node.time_from_boundary_node[i] = tmp_best
                         # Sorts them by their smallest value if they are
                         # not in the queue
-                if has_updates:
+                if has_updates and connected_node.get_domination_value() > 0:
                     nodes_to_search.put((
                         # times updated since it was last expanded
-                        -connected_node.update_count,
+                        connected_node.get_domination_value(),
                         # minimum time from boundary node
                         connected_node.get_min_boundary_time(),
                         # number of infinities in the list
