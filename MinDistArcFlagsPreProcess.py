@@ -73,7 +73,8 @@ class ArcFlagsPreProcess:
         stop = timeit.default_timer()  # debug - only process one grid
         print "Running time:", stop - start, "seconds"  # debug
 
-        link_file = csv.writer(open("ArcFlags/map_"+map_file+"MinDist.csv", 'wb'))
+        link_file = csv.writer(
+            open("ArcFlags/map_"+map_file+"MinDist.csv", 'wb'))
         # This is a hexadecimal string that converts region to true or false
         headers = ["start_nodeID", "end_nodeID", "hexStringOfRegions"]
         # RegionNumber   = 0, 1, 2, 3, 4, 5, 6, 7
