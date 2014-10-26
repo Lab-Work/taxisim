@@ -1,5 +1,5 @@
 import Queue
-
+from AbortedDijkstra import abortedDijkstra
 
 # An implementation of multi-origin dijkstra
 class DijkstrasAlgorithm:
@@ -8,7 +8,8 @@ class DijkstrasAlgorithm:
     def init_dict(list_of_boundary_nodes):
         i = 0
         boundary_indices = dict()
-        for node in list_of_boundary_nodes:
+        sorted_boundary_nodes = sorted(list_of_boundary_nodes, key=lambda x: x.id)
+        for node in sorted_boundary_nodes:
             boundary_indices[node] = i
             i += 1
         return boundary_indices
@@ -25,14 +26,40 @@ class DijkstrasAlgorithm:
                         [float("INF")] * len(boundary_nodes_list))
                     # Store a deep copy snapshot of time_from_boundary_node for
                     # future comparison
-                    node.time_snapshot = node.time_from_boundary_node[:]
-                    node.arc_flag_paths = [None] * len(boundary_nodes_list)
+                    
                     if node in boundary_indices:
                         # If it's in the dictionary, it's a boundary node,
                         # and thus must be 0 away from itself
                         index = boundary_indices[node]
                         node.time_from_boundary_node[index] = 0
                         node.was_updated.add(index)
+                    
+                    node.time_snapshot = node.time_from_boundary_node[:]
+                    node.arc_flag_paths = [None] * len(boundary_nodes_list)
+    
+    #Computes the shortest path between all pairs of boundary nodes
+    #If this id done before the main dijkstra() search, performance should be much better
+    @staticmethod
+    def initialize_boundary_nodes(boundary_indices, boundary_nodes_list, grid_of_nodes, this_region_only):
+        
+        for boundary_node in boundary_nodes_list:
+            index = boundary_indices[boundary_node]
+            abortedDijkstra(boundary_node, index, boundary_nodes_list, this_region_only)    
+
+        #reset all of the labels except the boundary nodes in this region
+        for column in grid_of_nodes:
+            for region in column:
+                for node in region.nodes:
+                    # Each node needs a distance from each boundary node
+                    # all starting at infinity
+                    if(node.is_boundary_node and node.region_id==boundary_node.region_id):
+                        for boundary_node in boundary_nodes_list:
+                            index = boundary_indices[boundary_node]
+                            node.was_updated.add(index)
+                    else:
+                        node.time_from_boundary_node = (
+                        [float("INF")] * len(boundary_nodes_list))
+
 
     # Keeps a dictionary of how far away a given node is away from a given
     # boundary node
@@ -64,17 +91,25 @@ class DijkstrasAlgorithm:
     # Basically creates a tree rooted at the boundary node where every edge in
     # the tree is an arcflag
     @staticmethod
-    def dijkstra(boundary_nodes, grid_of_nodes):
+    def dijkstra(boundary_nodes, grid_of_nodes, warm_start):
         max_queue_size = 0  # debug
         expansion_count = 0  # debug
         # Assign each boundary node an i for distance
         boundary_indices = DijkstrasAlgorithm.init_dict(boundary_nodes)
 
+        print("initializing")
         # Gives each node a distance from the boundary nodes, which are
         # initially either INF(infinity) or 0
         DijkstrasAlgorithm.initialize_nodes(boundary_indices, boundary_nodes,
                                             grid_of_nodes)
+        
+        #Compute pairwise distances between boundary nodes, so only good information is propagated
+        if(warm_start):
+            print("warmstarting")
+            DijkstrasAlgorithm.initialize_boundary_nodes(boundary_indices, boundary_nodes, grid_of_nodes, False)
 
+
+        print("Running Dijkstra with " + str(len(boundary_nodes)) + " boundary nodes.")
         # Nodes we intend to search (somehow connected to graph so far). We
         # treat this as a priority queue: the one that has the potential to be
         # closest (has best distance from the start_node/is closest to the
@@ -90,12 +125,14 @@ class DijkstrasAlgorithm:
                 # minimum time from boundary node
                 0,
                 # number of infinities in the list
-                len(node.time_from_boundary_node) - 1,
-                # sum of non infinities in the list
                 0,
+                # sum of non infinities in the list
+                node.get_boundary_time_sum(),
                 # the actual node itself
                 node))
         counter = 0
+        
+        this_region_id = node.region_id
         while not nodes_to_search.empty():
             # Gets the node closest to the end node in the best case
             counter += 1
@@ -104,21 +141,26 @@ class DijkstrasAlgorithm:
             if counter % 10000 == 0:
                 print nodes_to_search.qsize()
             queue_item = nodes_to_search.get()
-            old_min_time, old_inf_count, old_sum = queue_item[1:4]
+            old_dom_value, old_min_time, old_inf_count, old_sum = queue_item[0:4]
             curr_node = queue_item[4]
+         
             # Skip if the item in queue is out-dated
             if (old_min_time > curr_node.get_min_boundary_time() or
                     old_inf_count > curr_node.get_boundary_time_inf_count() or
-                    old_sum < node.get_boundary_time_sum()):
+                    old_sum < curr_node.get_boundary_time_sum()):
                 continue
+            
+            if(curr_node.is_boundary_node and curr_node.region_id==this_region_id):
+                print "****"+ "(" + str(expansion_count) + " / " + str(counter) + ") BoundaryNode(" + str(boundary_indices[curr_node]) + ") : " + str(old_dom_value)
 
+            # Overwrite the snapshot with a copy of the current label
+            curr_node.time_snapshot = (curr_node.time_from_boundary_node[:])
+                    
             # expansion of curr_node starts here
             expansion_count += 1
             for connected_node in curr_node.backwards_connections:
                 has_updates = False
-                # Overwrite the snapshot with a copy of the current label
-                curr_node.time_snapshot = (
-                    curr_node.time_from_boundary_node[:])
+                
                 for i in curr_node.was_updated:
                     if connected_node.time_connections[curr_node] <= 0:
                         continue
@@ -141,7 +183,7 @@ class DijkstrasAlgorithm:
                 if has_updates and connected_node.get_domination_value() > 0:
                     nodes_to_search.put((
                         # times updated since it was last expanded
-                        connected_node.get_domination_value(),
+                        -connected_node.get_domination_value(),
                         # minimum time from boundary node
                         connected_node.get_min_boundary_time(),
                         # number of infinities in the list
@@ -156,6 +198,28 @@ class DijkstrasAlgorithm:
 
         print "Max Queue Size:", max_queue_size  # debug
         print "Number of expansions:", expansion_count  # debug
+        return boundary_indices
+
+    #Runs a Dijkstra search independently for each boundary node.
+    @staticmethod
+    def independentDijkstra(boundary_nodes, grid_of_nodes):
+         # Assign each boundary node an i for distance
+        boundary_indices = DijkstrasAlgorithm.init_dict(boundary_nodes)
+
+        print("initializing")
+        # Gives each node a distance from the boundary nodes, which are
+        # initially either INF(infinity) or 0
+        DijkstrasAlgorithm.initialize_nodes(boundary_indices, boundary_nodes,
+                                            grid_of_nodes)
+        
+        for boundary_node in boundary_nodes:
+            _id = boundary_indices[boundary_node]
+            print "processing boundary node " + str(_id)
+            abortedDijkstra(boundary_node, _id, None)
+        
+        return boundary_indices
+        
+
 
     # Given where the nodes came from, rebuilds the path that was taken to the
     # final node

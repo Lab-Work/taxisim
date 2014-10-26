@@ -61,6 +61,9 @@ class Node:
         # The number of times this node has been updated since its last
         # expansion
         self.update_count = 0
+        
+        #Identifies which region this node belongs to
+        self.region_id = (None, None)
 
     # Compare time_from_boundary_node with the snapshot from its last expansion
     def get_domination_value(self):

@@ -35,10 +35,14 @@ def set_up_grid(upmost, downmost, rightmost, leftmost, num_divisions, nodes):
             curr_down += change_in_lat
         grid.append(thisLong)
         curr_left += change_in_long
-    for Node in nodes:
+    for node in nodes:
         # The coordinates hashed into the grid based off the Node's latitude
         # and longitude
-        i = int(float(Node.long - leftmost) / float(change_in_long))
-        j = int(float(Node.lat - downmost) / float(change_in_lat))
-        grid[i][j].nodes.add(Node)
+        i = int(float(node.long - leftmost) / float(change_in_long))
+        j = int(float(node.lat - downmost) / float(change_in_lat))
+        grid[i][j].nodes.add(node)
+        
+        #Also store the region mapping on the node object
+        node.region_id = (i,j)
+        
     return grid
