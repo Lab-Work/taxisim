@@ -34,7 +34,8 @@ def abortedDijkstra(originNode, boundaryNodes, this_region_only=False):
         (dist, node) = nodes_to_search.get()
         expanded_count+=1
         
-        visited_nodes.add(node)
+        if(boundaryNodes!=None):
+           visited_nodes.add(node)
         
         #If this is a boundary node for this region, mark it as visited
         if(boundaryNodes!= None and node.is_boundary_node and node.region_id == originNode.region_id):        

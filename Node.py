@@ -54,11 +54,11 @@ class Node:
         self.time_from_boundary_node = np.array([])
 
         # A snapshot of the time_from_boundary_node from the last expansion
-        self.time_snapshot = []
+        self.time_snapshot = np.array([])
 
         # For each boundary node path, shows where this particular node came
         # from
-        self.arc_flag_paths = []
+        self.arc_flag_paths = np.array([])
 
         # Checks if the node is currently in the queue (won't add otherwise)
         self.in_queue = False
@@ -103,6 +103,13 @@ class Node:
     def get_boundary_time_sum(self):
         finite_numbers = self.time_from_boundary_node[np.isfinite(self.time_from_boundary_node)]
         return np.sum(finite_numbers)
+    
+    def get_priority_key(self, use_domination_value):
+        if(use_domination_value):
+            return -self.get_domination_value()
+        else:
+            return self.get_min_boundary_time()
+        
 
 
 

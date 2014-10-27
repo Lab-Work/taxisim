@@ -50,9 +50,8 @@ class DijkstrasAlgorithm:
         
         visited_nodes = set()
         for boundary_node in boundary_nodes_list:
-            index = boundary_node.boundary_node_id
             partial_visited_nodes, num_expanded, max_pq_Size = abortedDijkstra(
-                                boundary_node, index, boundary_nodes_list, this_region_only)
+                                boundary_node, boundary_nodes_list, this_region_only)
             visited_nodes.update(partial_visited_nodes)
 
     
@@ -95,18 +94,25 @@ class DijkstrasAlgorithm:
     # no time from anything, and came from nothing (used to reset after making
     # the path)
     @staticmethod
-    def reset_nodes(arr_nodes):
-        for node in arr_nodes:
-            if node is not None:
-                node.came_from = None
-                node.best_time = float("INF")
-                node.arc_flag_paths = []
-                node.time_from_boundary_nodes = []
+    def reset_nodes(grid_of_nodes):
+        for col in grid_of_nodes:
+            for cell in col:
+                for node in cell.nodes:
+                    if node is not None:
+                        # For multi-origin dijkstra, storing the time from each boundary node
+                        node.time_from_boundary_node = np.array([])
+                    
+                        # A snapshot of the time_from_boundary_node from the last expansion
+                        node.time_snapshot = np.array([])
+                    
+                        # For each boundary node path, shows where this particular node came
+                        # from
+                        node.arc_flag_paths = np.array([])
 
     # Basically creates a tree rooted at the boundary node where every edge in
     # the tree is an arcflag
     @staticmethod
-    def dijkstra(boundary_nodes, grid_of_nodes, warm_start):
+    def dijkstra(boundary_nodes, grid_of_nodes, warm_start, use_domination_value):
         start_time = datetime.now()
         
         max_queue_size = 0  # debug
@@ -115,10 +121,6 @@ class DijkstrasAlgorithm:
         #Assign sequential IDs to the boundary nodes of this region
         DijkstrasAlgorithm.init_boundary_node_ids(boundary_nodes)
         
-        #Look at the first boundary node to get the region_id
-        for boundary_node in boundary_nodes:
-                this_region_id = boundary_node.region_id
-                break
 
 
         print("initializing")
@@ -146,7 +148,7 @@ class DijkstrasAlgorithm:
             if(warm_start==False or node.get_boundary_time_inf_count() == 0):
                 nodes_to_search.put((
                             # times updated since it was last expanded
-                            node.get_min_boundary_time(),
+                            node.get_priority_key(use_domination_value),
                             # minimum time from boundary node
                             node.get_min_boundary_time(),
                             # number of infinities in the list
@@ -163,9 +165,9 @@ class DijkstrasAlgorithm:
             # Gets the node closest to the end node in the best case
             if (nodes_to_search.qsize() > max_queue_size):
                 max_queue_size = nodes_to_search.qsize()
-            if counter % 10000 == 0:
-                print str(datetime.now() - start_time) + "   " + str(nodes_to_search.qsize())
-            counter += 1
+            #if counter % 10000 == 0:
+            #    print str(datetime.now() - start_time) + "   " + str(nodes_to_search.qsize())
+            #counter += 1
 
             queue_item = nodes_to_search.get()
             old_dom_value, old_min_time, old_inf_count, old_sum = queue_item[0:4]
@@ -177,8 +179,8 @@ class DijkstrasAlgorithm:
                     old_sum < curr_node.get_boundary_time_sum()):
                 continue
             
-            if(curr_node.is_boundary_node and curr_node.region_id==this_region_id):
-                print "****"+ "(" + str(expansion_count) + " / " + str(counter) + ") BoundaryNode(" + str(curr_node.boundary_node_id) + ") : " + str(old_dom_value)
+            #if(curr_node.is_boundary_node and curr_node.region_id==this_region_id):
+            #    print "****"+ "(" + str(expansion_count) + " / " + str(counter) + ") BoundaryNode(" + str(curr_node.boundary_node_id) + ") : " + str(old_dom_value)
 
             # Overwrite the snapshot with a copy of the current label
             np.copyto(curr_node.time_snapshot, curr_node.time_from_boundary_node)
@@ -206,10 +208,10 @@ class DijkstrasAlgorithm:
                     #TODO: set connected_node.arc_flag_paths
                 
 
-                if has_updates and connected_node.get_domination_value() > 0:
+                if has_updates:
                     nodes_to_search.put((
                         # times updated since it was last expanded
-                        connected_node.get_min_boundary_time(),
+                        connected_node.get_priority_key(use_domination_value),
                         # minimum time from boundary node
                         connected_node.get_min_boundary_time(),
                         # number of infinities in the list
@@ -235,10 +237,17 @@ class DijkstrasAlgorithm:
         # initially either INF(infinity) or 0
         DijkstrasAlgorithm.initialize_nodes(boundary_nodes, grid_of_nodes)
         
+        total_expanded = 0
+        overall_max_pq_size = 0
         for boundary_node in boundary_nodes:
-            print "processing boundary node " + str(boundary_node.boundary_node_id)
             tmp, num_expanded, max_pq_size = abortedDijkstra(boundary_node, None)
-            print "expanded_nodes: " + str(num_expanded) + " , max_pq_size: " + str(max_pq_size)
+            total_expanded += num_expanded
+            overall_max_pq_size = max(overall_max_pq_size, max_pq_size)
+        
+        print "Max Queue Size:", overall_max_pq_size  # debug
+        print "Number of expansions:", total_expanded  # debug
+        
+        return total_expanded, overall_max_pq_size
         
         
 
@@ -253,4 +262,3 @@ class DijkstrasAlgorithm:
                     for connection in node.arc_flag_paths:
                         if connection is not None:
                             node.is_arc_flags[connection] = True
-                DijkstrasAlgorithm.reset_nodes(grid_region.nodes)

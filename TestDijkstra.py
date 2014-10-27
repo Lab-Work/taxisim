@@ -57,12 +57,12 @@ class TestArcFlags:
         
 
     @staticmethod
-    def run(map_file, outfile, warmstart=True):
+    def run(grid_of_nodes, region_i, region_j, outfile, warmstart=True, use_domination_value=False):
 
-        grid_of_nodes = get_correct_nodes(20, "speeds_per_hour/" + map_file,
-                                          None)
+        
+        DijkstrasAlgorithm.reset_nodes(grid_of_nodes)
     
-        grid_region = grid_of_nodes[10][10]
+        grid_region = grid_of_nodes[region_i][region_j]
 
         set_of_nodes = set()
         # Makes sure set_of_nodes only contains the boundary nodes
@@ -73,18 +73,19 @@ class TestArcFlags:
 
         start_time = datetime.now()
 
-        DijkstrasAlgorithm.dijkstra(set_of_nodes, grid_of_nodes, warmstart)
+        DijkstrasAlgorithm.dijkstra(set_of_nodes, grid_of_nodes, warmstart, use_domination_value)
         
         print datetime.now() - start_time
 
         TestArcFlags.output_labels(grid_of_nodes, set_of_nodes, outfile)
 
     @staticmethod
-    def runIndependently(map_file, outfile):
-        grid_of_nodes = get_correct_nodes(20, "speeds_per_hour/" + map_file,
-                                          None)
+    def runIndependently(grid_of_nodes, region_i, region_j, outfile):
+
+        DijkstrasAlgorithm.reset_nodes(grid_of_nodes)
     
-        grid_region = grid_of_nodes[10][10]
+    
+        grid_region = grid_of_nodes[region_i][region_j]
 
         set_of_nodes = set()
         # Makes sure set_of_nodes only contains the boundary nodes
@@ -103,6 +104,19 @@ class TestArcFlags:
         
         
 if __name__ == '__main__':
-    TestArcFlags.runIndependently("0_0", "nodes_independent.csv")
-    #TestArcFlags.run("0_0", "nodes_minkey_coldstart.csv", False)
-    #TestArcFlags.run("0_0", "nodes_minkey_warmstart.csv", True)
+    grid_of_nodes = get_correct_nodes(20, "speeds_per_hour/0_0", None)
+    
+    for (i,j) in [(0,0), (10,10), (11, 5), (17,6), (16,4), (19,18), (17,3), (18,2)]:
+        print ("================================== PROCESSING REGION " + str((i,j)) + " =================================")
+        print
+        print("---------Independent")
+        TestArcFlags.runIndependently(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_independent.csv")
+        print("---------Minkey Cold")
+        TestArcFlags.run(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_minkey_coldstart.csv", False, False)
+        print("---------Minkey Warm")
+        TestArcFlags.run(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_minkey_warmstart.csv", True, False)
+        print("---------Domkey Cold")
+        TestArcFlags.run(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_domkey_coldstart.csv", False, True)
+        print("---------Domkey Warm")
+        TestArcFlags.run(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_domkey_warmstart.csv", True, True)
+    
