@@ -15,11 +15,11 @@ from Queue import PriorityQueue
     #this_region_only - if True, ignore nodes from other regions (WARNING: shortest path between two boundary nodes may go outside of region.)
 #returns:
     #nodes_to_search - the "frontier" of nodes which have been touche 
-def abortedDijkstra(originNode, originNodeId, boundaryNodes, this_region_only=False):
+def abortedDijkstra(originNode, boundaryNodes, this_region_only=False):
     #maintain set of boundary  nodes that have been visited by this search
     visited_boundary_nodes = set()
     visited_nodes = set()
-    i = originNodeId
+    i = originNode.boundary_node_id
     
     #Initialize Dijkstra queue with the origin node
     nodes_to_search = PriorityQueue()
@@ -55,7 +55,6 @@ def abortedDijkstra(originNode, originNodeId, boundaryNodes, this_region_only=Fa
             #If this is better than the current best path to the neighbor, update it (relaxation)
             if(proposed_distance < neighbor.time_from_boundary_node[i]):
                 neighbor.time_from_boundary_node[i] = proposed_distance
-                neighbor.was_updated.add(i)
                 #since the distance was updated, this node needs to be re-added to the PQ
                 nodes_to_search.put((proposed_distance, neighbor))
                 

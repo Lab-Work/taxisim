@@ -36,19 +36,19 @@ class TestArcFlags:
 
 
     @staticmethod
-    def output_labels(grid_of_nodes, outfile, boundary_indices):
+    def output_labels(grid_of_nodes, boundary_nodes, outfile):
         print "outputting"
         output_table = []
         for column in grid_of_nodes:
             for grid_region in column:
                 for node in grid_region.nodes:
-                    output_table.append([node.id] + node.time_from_boundary_node)
+                    output_table.append([node.id] + list(node.time_from_boundary_node))
         
         output_table.sort(key = lambda x: x[0])
         with open(outfile, "w") as f:
             w = csv.writer(f)
-            sorted_nodes = sorted(boundary_indices, key = lambda x: boundary_indices[x])
-            node_ids = [n.id for n in sorted_nodes]            
+            sorted_nodes = sorted(boundary_nodes, key = lambda x: x.boundary_node_id)
+            node_ids = [n.id for n in sorted_nodes]     
             w.writerow(["Node"] + node_ids)            
             
             for row in output_table:
@@ -73,11 +73,11 @@ class TestArcFlags:
 
         start_time = datetime.now()
 
-        boundary_indices = DijkstrasAlgorithm.dijkstra(set_of_nodes, grid_of_nodes, warmstart)
+        DijkstrasAlgorithm.dijkstra(set_of_nodes, grid_of_nodes, warmstart)
         
         print datetime.now() - start_time
 
-        TestArcFlags.output_labels(grid_of_nodes, outfile, boundary_indices)
+        TestArcFlags.output_labels(grid_of_nodes, set_of_nodes, outfile)
 
     @staticmethod
     def runIndependently(map_file, outfile):
@@ -95,14 +95,14 @@ class TestArcFlags:
 
         start_time = datetime.now()
 
-        boundary_indices = DijkstrasAlgorithm.independentDijkstra(set_of_nodes, grid_of_nodes)
+        DijkstrasAlgorithm.independentDijkstra(set_of_nodes, grid_of_nodes)
         
         print datetime.now() - start_time
 
-        TestArcFlags.output_labels(grid_of_nodes, outfile, boundary_indices)
+        TestArcFlags.output_labels(grid_of_nodes, set_of_nodes, outfile)
         
         
 if __name__ == '__main__':
-    #TestArcFlags.runIndependently("0_0", "nodes_independent.csv")
+    TestArcFlags.runIndependently("0_0", "nodes_independent.csv")
     #TestArcFlags.run("0_0", "nodes_minkey_coldstart.csv", False)
-    TestArcFlags.run("0_0", "nodes_minkey_warmstart.csv", True)
+    #TestArcFlags.run("0_0", "nodes_minkey_warmstart.csv", True)

@@ -1,5 +1,6 @@
 import csv
 from Grid import set_up_grid
+import numpy as np
 
 # TODO: REMOVE THE DUPLICATE STUFF TAKING INTO ACCOUNT NONES
 
@@ -40,13 +41,17 @@ class Node:
 
         # Tells if the node is a boundary node
         self.is_boundary_node = False
+        
+        #Uniquely indexes the boundary nodes in each region
+        #This index refers to a slot in time_from_boundary_node
+        self.boundary_node_id = -1
 
         # During the dijkstra algorithm, give a set of which indices were
         # updated
-        self.was_updated = set()
+        #self.was_updated = set()
 
         # For multi-origin dijkstra, storing the time from each boundary node
-        self.time_from_boundary_node = []
+        self.time_from_boundary_node = np.array([])
 
         # A snapshot of the time_from_boundary_node from the last expansion
         self.time_snapshot = []
@@ -67,11 +72,7 @@ class Node:
 
     # Compare time_from_boundary_node with the snapshot from its last expansion
     def get_domination_value(self):
-        count = 0
-        for i in range(len(self.time_from_boundary_node)):
-            if self.time_from_boundary_node[i] != self.time_snapshot[i]:
-                count = count + 1
-        return count
+        return np.sum(self.time_from_boundary_node != self.time_snapshot)
 
     # Given an _id, gives its weight
     def add_connecting_node(self, _id, weight, speed, time):
@@ -94,14 +95,15 @@ class Node:
                 self.distance_connections[connection] / init_speed)
 
     def get_min_boundary_time(self):
-        return min(self.time_from_boundary_node)
+        return np.min(self.time_from_boundary_node)
 
     def get_boundary_time_inf_count(self):
-        return self.time_from_boundary_node.count(float("INF"))
+        return np.sum(self.time_from_boundary_node==float('inf'))
 
     def get_boundary_time_sum(self):
-        return sum([x for x in self.time_from_boundary_node
-                    if x != float("INF")])
+        finite_numbers = self.time_from_boundary_node[np.isfinite(self.time_from_boundary_node)]
+        return np.sum(finite_numbers)
+
 
 
 # For converting the regions in the ArcFlags csv file back into binary from hex
