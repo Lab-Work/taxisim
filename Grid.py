@@ -8,6 +8,15 @@ class GridRegion:
         self.left = left_bound
         self.right = right_bound
         self.nodes = set()
+    
+    #Gets all of the boundary nodes in this region
+    def get_boundary_nodes(self):
+        boundary_nodes = []
+        for node in self.nodes:
+            if node.is_boundary_node:
+                boundary_nodes.append(node)
+        return boundary_nodes
+        
 
 
 # Given an overall area and how many regions you want
