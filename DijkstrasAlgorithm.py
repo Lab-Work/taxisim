@@ -1,5 +1,7 @@
 import Queue
 from AbortedDijkstra import abortedDijkstra
+from datetime import datetime
+
 
 # An implementation of multi-origin dijkstra
 class DijkstrasAlgorithm:
@@ -42,10 +44,17 @@ class DijkstrasAlgorithm:
     @staticmethod
     def initialize_boundary_nodes(boundary_indices, boundary_nodes_list, grid_of_nodes, this_region_only):
         
+        visited_nodes = set()
         for boundary_node in boundary_nodes_list:
             index = boundary_indices[boundary_node]
-            abortedDijkstra(boundary_node, index, boundary_nodes_list, this_region_only)    
+            partial_visited_nodes, num_expanded, max_pq_Size = abortedDijkstra(
+                                boundary_node, index, boundary_nodes_list, this_region_only)
+            visited_nodes.update(partial_visited_nodes)
 
+        
+        for boundary_node in boundary_nodes_list:
+            boundary_node.time_snapshot = boundary_node.time_from_boundary_node[:]
+        """
         #reset all of the labels except the boundary nodes in this region
         for column in grid_of_nodes:
             for region in column:
@@ -59,6 +68,8 @@ class DijkstrasAlgorithm:
                     else:
                         node.time_from_boundary_node = (
                         [float("INF")] * len(boundary_nodes_list))
+        """
+        return visited_nodes
 
 
     # Keeps a dictionary of how far away a given node is away from a given
@@ -92,10 +103,17 @@ class DijkstrasAlgorithm:
     # the tree is an arcflag
     @staticmethod
     def dijkstra(boundary_nodes, grid_of_nodes, warm_start):
+        start_time = datetime.now()
+        
         max_queue_size = 0  # debug
         expansion_count = 0  # debug
         # Assign each boundary node an i for distance
         boundary_indices = DijkstrasAlgorithm.init_dict(boundary_nodes)
+        
+        for boundary_node in boundary_nodes:
+                this_region_id = boundary_node.region_id
+                break
+
 
         print("initializing")
         # Gives each node a distance from the boundary nodes, which are
@@ -106,7 +124,7 @@ class DijkstrasAlgorithm:
         #Compute pairwise distances between boundary nodes, so only good information is propagated
         if(warm_start):
             print("warmstarting")
-            DijkstrasAlgorithm.initialize_boundary_nodes(boundary_indices, boundary_nodes, grid_of_nodes, False)
+            touched_nodes = DijkstrasAlgorithm.initialize_boundary_nodes(boundary_indices, boundary_nodes, grid_of_nodes, False)
 
 
         print("Running Dijkstra with " + str(len(boundary_nodes)) + " boundary nodes.")
@@ -116,6 +134,7 @@ class DijkstrasAlgorithm:
         # end_node) is treated next
         nodes_to_search = Queue.PriorityQueue()
 
+        """
         # Checks to see if the node is already in the queue (True means it is
         # in it False means it is not)
         for node in boundary_nodes:
@@ -130,16 +149,31 @@ class DijkstrasAlgorithm:
                 node.get_boundary_time_sum(),
                 # the actual node itself
                 node))
+        """
+        for node in touched_nodes:
+            if(node.get_boundary_time_inf_count() == 0):
+                nodes_to_search.put((
+                            # times updated since it was last expanded
+                            -node.get_domination_value(),
+                            # minimum time from boundary node
+                            node.get_min_boundary_time(),
+                            # number of infinities in the list
+                            node.get_boundary_time_inf_count(),
+                            # sum of non infinities in the list
+                            node.get_boundary_time_sum(),
+                            # the actual node itself
+                            node))
+        
         counter = 0
         
-        this_region_id = node.region_id
         while not nodes_to_search.empty():
             # Gets the node closest to the end node in the best case
-            counter += 1
             if (nodes_to_search.qsize() > max_queue_size):
                 max_queue_size = nodes_to_search.qsize()
             if counter % 10000 == 0:
-                print nodes_to_search.qsize()
+                print str(datetime.now() - start_time) + "   " + str(nodes_to_search.qsize())
+            counter += 1
+
             queue_item = nodes_to_search.get()
             old_dom_value, old_min_time, old_inf_count, old_sum = queue_item[0:4]
             curr_node = queue_item[4]
@@ -161,9 +195,12 @@ class DijkstrasAlgorithm:
             for connected_node in curr_node.backwards_connections:
                 has_updates = False
                 
+                
+                if connected_node.time_connections[curr_node] <= 0:
+                    continue
+                    
                 for i in curr_node.was_updated:
-                    if connected_node.time_connections[curr_node] <= 0:
-                        continue
+                    
                     # Checks distance thus far and the best case distance
                     # between this point and the end point
                     tmp_best = (
@@ -215,7 +252,8 @@ class DijkstrasAlgorithm:
         for boundary_node in boundary_nodes:
             _id = boundary_indices[boundary_node]
             print "processing boundary node " + str(_id)
-            abortedDijkstra(boundary_node, _id, None)
+            tmp, num_expanded, max_pq_size = abortedDijkstra(boundary_node, _id, None)
+            print "expanded_nodes: " + str(num_expanded) + " , max_pq_size: " + str(max_pq_size)
         
         return boundary_indices
         

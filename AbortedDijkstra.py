@@ -18,15 +18,23 @@ from Queue import PriorityQueue
 def abortedDijkstra(originNode, originNodeId, boundaryNodes, this_region_only=False):
     #maintain set of boundary  nodes that have been visited by this search
     visited_boundary_nodes = set()
+    visited_nodes = set()
     i = originNodeId
     
     #Initialize Dijkstra queue with the origin node
     nodes_to_search = PriorityQueue()
     nodes_to_search.put((0, originNode))
     
+    expanded_count = 0
+    max_pq_size = 0
+    
     while(not nodes_to_search.empty()):
         #Get the nearest node from the priority queue
+        max_pq_size = max(nodes_to_search.qsize(), max_pq_size)
         (dist, node) = nodes_to_search.get()
+        expanded_count+=1
+        
+        visited_nodes.add(node)
         
         #If this is a boundary node for this region, mark it as visited
         if(boundaryNodes!= None and node.is_boundary_node and node.region_id == originNode.region_id):        
@@ -47,11 +55,13 @@ def abortedDijkstra(originNode, originNodeId, boundaryNodes, this_region_only=Fa
             #If this is better than the current best path to the neighbor, update it (relaxation)
             if(proposed_distance < neighbor.time_from_boundary_node[i]):
                 neighbor.time_from_boundary_node[i] = proposed_distance
+                neighbor.was_updated.add(i)
                 #since the distance was updated, this node needs to be re-added to the PQ
                 nodes_to_search.put((proposed_distance, neighbor))
+                
     
     #Now, all origin nodes (and some other nodes) all know their distance from the given originNode
-    return nodes_to_search
+    return visited_nodes, expanded_count, max_pq_size
 
 
     
