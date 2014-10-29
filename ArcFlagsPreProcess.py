@@ -43,7 +43,7 @@ class ArcFlagsPreProcess:
                             fastest_velocity = node.speed_connections[conn]
         start = timeit.default_timer()
         for column in grid_of_nodes:
-            for grid_region in column:
+            for grid_region in column:  # one grid to test
                 print "Next Region!"
                 if i % 10 == 0:
                     stop = timeit.default_timer()
@@ -68,6 +68,11 @@ class ArcFlagsPreProcess:
                                         str(node.id), str(conn.id))][i] = 1
                 ArcFlagsPreProcess.reset_arc_flags(grid_of_nodes)
                 i += 1
+                break  # debug - only process one grid
+            break  # debug - only process one grid
+        stop = timeit.default_timer()  # debug - only process one grid
+        print "Running time:", stop - start, "seconds"  # debug
+
         link_file = csv.writer(open("ArcFlags/map_"+map_file+".csv", 'wb'))
         # This is a hexadecimal string that converts region to true or false
         headers = ["start_nodeID", "end_nodeID", "hexStringOfRegions"]
