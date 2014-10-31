@@ -41,14 +41,14 @@ class Node:
 
         # Tells if the node is a boundary node
         self.is_boundary_node = False
-        
-        #Uniquely indexes the boundary nodes in each region
-        #This index refers to a slot in time_from_boundary_node
+
+        # Uniquely indexes the boundary nodes in each region
+        # This index refers to a slot in time_from_boundary_node
         self.boundary_node_id = -1
 
         # During the dijkstra algorithm, give a set of which indices were
         # updated
-        #self.was_updated = set()
+        # self.was_updated = set()
 
         # For multi-origin dijkstra, storing the time from each boundary node
         self.time_from_boundary_node = np.array([])
@@ -66,8 +66,8 @@ class Node:
         # The number of times this node has been updated since its last
         # expansion
         self.update_count = 0
-        
-        #Identifies which region this node belongs to
+
+        # Identifies which region this node belongs to
         self.region_id = (None, None)
 
     # Compare time_from_boundary_node with the snapshot from its last expansion
@@ -98,19 +98,18 @@ class Node:
         return np.min(self.time_from_boundary_node)
 
     def get_boundary_time_inf_count(self):
-        return np.sum(self.time_from_boundary_node==float('inf'))
+        return np.sum(self.time_from_boundary_node == float('inf'))
 
     def get_boundary_time_sum(self):
-        finite_numbers = self.time_from_boundary_node[np.isfinite(self.time_from_boundary_node)]
+        finite_numbers = self.time_from_boundary_node[
+            np.isfinite(self.time_from_boundary_node)]
         return np.sum(finite_numbers)
-    
+
     def get_priority_key(self, use_domination_value):
         if(use_domination_value):
             return -self.get_domination_value()
         else:
             return self.get_min_boundary_time()
-        
-
 
 
 # For converting the regions in the ArcFlags csv file back into binary from hex

@@ -8,11 +8,12 @@ import numpy as np
 # An implementation of multi-origin dijkstra
 class DijkstrasAlgorithm:
     # Gives out sequential id numbers to the boundary nodes in this region
-    #These values are used to index the node.time_from_boundary_node array
+    # These values are used to index the node.time_from_boundary_node array
     @staticmethod
     def init_boundary_node_ids(list_of_boundary_nodes):
         i = 0
-        sorted_boundary_nodes = sorted(list_of_boundary_nodes, key=lambda x: x.id)
+        sorted_boundary_nodes = sorted(list_of_boundary_nodes,
+                                       key=lambda x: x.id)
         for node in sorted_boundary_nodes:
             node.boundary_node_id = i
             i += 1
@@ -20,44 +21,48 @@ class DijkstrasAlgorithm:
     # Sets up lists of "INF" for each nodes, excluding boundary nodes
     @staticmethod
     def initialize_nodes(boundary_nodes_list, grid_of_nodes):
-        
+
         for tmp_node in boundary_nodes_list:
             break
         this_region_id = tmp_node.region_id
-        
+
         for column in grid_of_nodes:
             for region in column:
                 for node in region.nodes:
                     # Each node needs a distance from each boundary node
                     # all starting at infinity
-                    node.time_from_boundary_node = np.repeat(float("INF"), len(boundary_nodes_list))
-                    
-                    
-                    if node.is_boundary_node and node.region_id==this_region_id:
-                        #All boundary nodes in this region are 0 distance away from themselves
+                    node.time_from_boundary_node = np.repeat(
+                        float("INF"), len(boundary_nodes_list))
+
+                    if node.is_boundary_node and (
+                            node.region_id == this_region_id):
+                        # All boundary nodes in this region are 0 distance away
+                        # from themselves
                         index = node.boundary_node_id
                         node.time_from_boundary_node[index] = 0
-                    
+
                     # Store a deep copy snapshot of time_from_boundary_node for
                     # future comparison
                     node.time_snapshot = np.copy(node.time_from_boundary_node)
                     node.arc_flag_paths = [None] * len(boundary_nodes_list)
-    
-    #Computes the shortest path between all pairs of boundary nodes
-    #If this id done before the main dijkstra() search, performance should be much better
+
+    # Computes the shortest path between all pairs of boundary nodes
+    # If this id done before the main dijkstra() search, performance should be
+    # much better
     @staticmethod
-    def initialize_boundary_nodes(boundary_nodes_list, grid_of_nodes, this_region_only):
-        
+    def initialize_boundary_nodes(boundary_nodes_list, grid_of_nodes,
+                                  this_region_only):
+
         visited_nodes = set()
         for boundary_node in boundary_nodes_list:
-            partial_visited_nodes, num_expanded, max_pq_Size = abortedDijkstra(
-                                boundary_node, boundary_nodes_list, this_region_only)
+            partial_visited_nodes, _, _ = abortedDijkstra(
+                boundary_node, boundary_nodes_list, this_region_only)
             visited_nodes.update(partial_visited_nodes)
 
-    
-        #Update the snapshots of the boundary nodes        
+        # Update the snapshots of the boundary nodes
         for boundary_node in boundary_nodes_list:
-            np.copyto(boundary_node.time_snapshot, boundary_node.time_from_boundary_node)
+            np.copyto(boundary_node.time_snapshot,
+                      boundary_node.time_from_boundary_node)
         """
         #reset all of the labels except the boundary nodes in this region
         for column in grid_of_nodes:
@@ -65,7 +70,8 @@ class DijkstrasAlgorithm:
                 for node in region.nodes:
                     # Each node needs a distance from each boundary node
                     # all starting at infinity
-                    if(node.is_boundary_node and node.region_id==boundary_node.region_id):
+                    if (node.is_boundary_node and
+                        node.region_id == boundary_node.region_id):
                         for boundary_node in boundary_nodes_list:
                             index = boundary_indices[boundary_node]
                             node.was_updated.add(index)
@@ -74,7 +80,6 @@ class DijkstrasAlgorithm:
                         [float("INF")] * len(boundary_nodes_list))
         """
         return visited_nodes
-
 
     # Keeps a dictionary of how far away a given node is away from a given
     # boundary node
@@ -99,114 +104,121 @@ class DijkstrasAlgorithm:
             for cell in col:
                 for node in cell.nodes:
                     if node is not None:
-                        # For multi-origin dijkstra, storing the time from each boundary node
+                        # For multi-origin dijkstra, storing the time from each
+                        # boundary node
                         node.time_from_boundary_node = np.array([])
-                    
-                        # A snapshot of the time_from_boundary_node from the last expansion
+
+                        # A snapshot of the time_from_boundary_node from the
+                        # last expansion
                         node.time_snapshot = np.array([])
-                    
-                        # For each boundary node path, shows where this particular node came
+
+                        # For each boundary node path, shows where this
+                        # particular node came
                         # from
                         node.arc_flag_paths = np.array([])
 
     # Basically creates a tree rooted at the boundary node where every edge in
     # the tree is an arcflag
     @staticmethod
-    def dijkstra(boundary_nodes, grid_of_nodes, warm_start, use_domination_value):
+    def dijkstra(boundary_nodes, grid_of_nodes, warm_start,
+                 use_domination_value):
         start_time = datetime.now()
-        
+
         max_queue_size = 0  # debug
         expansion_count = 0  # debug
-        
-        #Assign sequential IDs to the boundary nodes of this region
-        DijkstrasAlgorithm.init_boundary_node_ids(boundary_nodes)
-        
 
+        # Assign sequential IDs to the boundary nodes of this region
+        DijkstrasAlgorithm.init_boundary_node_ids(boundary_nodes)
 
         print("initializing")
         # Gives each node a distance from the boundary nodes, which are
         # initially either INF(infinity) or 0
         DijkstrasAlgorithm.initialize_nodes(boundary_nodes, grid_of_nodes)
-        
-        #Compute pairwise distances between boundary nodes, so only good information is propagated
+
+        # Compute pairwise distances between boundary nodes, so only good
+        # information is propagated
         if(warm_start):
             print("warmstarting")
-            touched_nodes = DijkstrasAlgorithm.initialize_boundary_nodes(boundary_nodes, grid_of_nodes, False)
+            touched_nodes = DijkstrasAlgorithm.initialize_boundary_nodes(
+                boundary_nodes, grid_of_nodes, False)
         else:
             touched_nodes = boundary_nodes
 
-
-        print("Running Dijkstra with " + str(len(boundary_nodes)) + " boundary nodes.")
+        print("Running Dijkstra with " + str(len(boundary_nodes)) +
+              " boundary nodes.")
         # Nodes we intend to search (somehow connected to graph so far). We
         # treat this as a priority queue: the one that has the potential to be
         # closest (has best distance from the start_node/is closest to the
         # end_node) is treated next
         nodes_to_search = Queue.PriorityQueue()
 
-
         for node in touched_nodes:
-            if(warm_start==False or node.get_boundary_time_inf_count() == 0):
+            if(warm_start is False or node.get_boundary_time_inf_count() == 0):
                 nodes_to_search.put((
-                            # times updated since it was last expanded
-                            node.get_priority_key(use_domination_value),
-                            # minimum time from boundary node
-                            node.get_min_boundary_time(),
-                            # number of infinities in the list
-                            node.get_boundary_time_inf_count(),
-                            # sum of non infinities in the list
-                            node.get_boundary_time_sum(),
-                            # the actual node itself
-                            node))
-        
+                    # times updated since it was last expanded
+                    node.get_priority_key(use_domination_value),
+                    # minimum time from boundary node
+                    node.get_min_boundary_time(),
+                    # number of infinities in the list
+                    node.get_boundary_time_inf_count(),
+                    # sum of non infinities in the list
+                    node.get_boundary_time_sum(),
+                    # the actual node itself
+                    node))
+
         counter = 0
-        
-        #import pdb; pdb.set_trace()
+
+        # import pdb; pdb.set_trace()
         while not nodes_to_search.empty():
             # Gets the node closest to the end node in the best case
             if (nodes_to_search.qsize() > max_queue_size):
                 max_queue_size = nodes_to_search.qsize()
-            #if counter % 10000 == 0:
+            # if counter % 10000 == 0:
             #    print str(datetime.now() - start_time) + "   " + str(nodes_to_search.qsize())
-            #counter += 1
+            # counter += 1
 
             queue_item = nodes_to_search.get()
             old_dom_value, old_min_time, old_inf_count, old_sum = queue_item[0:4]
             curr_node = queue_item[4]
-         
+
             # Skip if the item in queue is out-dated
             if (old_min_time > curr_node.get_min_boundary_time() or
                     old_inf_count > curr_node.get_boundary_time_inf_count() or
                     old_sum < curr_node.get_boundary_time_sum()):
                 continue
-            
-            #if(curr_node.is_boundary_node and curr_node.region_id==this_region_id):
+
+            # if(curr_node.is_boundary_node and curr_node.region_id==this_region_id):
             #    print "****"+ "(" + str(expansion_count) + " / " + str(counter) + ") BoundaryNode(" + str(curr_node.boundary_node_id) + ") : " + str(old_dom_value)
 
             # Overwrite the snapshot with a copy of the current label
             np.copyto(curr_node.time_snapshot, curr_node.time_from_boundary_node)
-                    
+
             # expansion of curr_node starts here
             expansion_count += 1
             for connected_node in curr_node.backwards_connections:
-                
-                
+
                 if connected_node.time_connections[curr_node] <= 0:
                     continue
-                
-                #The proposed distances from all boundary nodes if you go through curr_node
-                #i.e. curr_node's distances from the boundary nodes + the length of this link
-                proposed_label = curr_node.time_from_boundary_node + connected_node.time_connections[curr_node]
-                
-                #Only shorter paths are accepted - perform the element-wise min against current values
-                proposed_label = np.minimum(proposed_label, connected_node.time_from_boundary_node)
-                
-                #If there were any changes, copy and note them
+
+                # The proposed distances from all boundary nodes if you go
+                # through curr_node i.e. curr_node's distances from the
+                # boundary nodes + the length of this link
+                proposed_label = (curr_node.time_from_boundary_node +
+                                  connected_node.time_connections[curr_node])
+
+                # Only shorter paths are accepted - perform the element-wise
+                # min against current values
+                proposed_label = np.minimum(
+                    proposed_label, connected_node.time_from_boundary_node)
+
+                # If there were any changes, copy and note them
                 has_updates = False
-                if(not np.array_equal(proposed_label, connected_node.time_from_boundary_node)):
-                    has_updates=True
-                    np.copyto(connected_node.time_from_boundary_node, proposed_label)
-                    #TODO: set connected_node.arc_flag_paths
-                
+                if not np.array_equal(proposed_label,
+                                      connected_node.time_from_boundary_node):
+                    has_updates = True
+                    np.copyto(connected_node.time_from_boundary_node,
+                              proposed_label)
+                    # TODO: set connected_node.arc_flag_paths
 
                 if has_updates:
                     nodes_to_search.put((
@@ -226,31 +238,28 @@ class DijkstrasAlgorithm:
         print "Max Queue Size:", max_queue_size  # debug
         print "Number of expansions:", expansion_count  # debug
 
-    #Runs a Dijkstra search independently for each boundary node.
+    # Runs a Dijkstra search independently for each boundary node.
     @staticmethod
     def independentDijkstra(boundary_nodes, grid_of_nodes):
-         # Assign each boundary node an i for distance
+        # Assign each boundary node an i for distance
         DijkstrasAlgorithm.init_boundary_node_ids(boundary_nodes)
-        
+
         print("initializing")
         # Gives each node a distance from the boundary nodes, which are
         # initially either INF(infinity) or 0
         DijkstrasAlgorithm.initialize_nodes(boundary_nodes, grid_of_nodes)
-        
+
         total_expanded = 0
         overall_max_pq_size = 0
         for boundary_node in boundary_nodes:
-            tmp, num_expanded, max_pq_size = abortedDijkstra(boundary_node, None)
+            _, num_expanded, max_pq_size = abortedDijkstra(boundary_node, None)
             total_expanded += num_expanded
             overall_max_pq_size = max(overall_max_pq_size, max_pq_size)
-        
+
         print "Max Queue Size:", overall_max_pq_size  # debug
         print "Number of expansions:", total_expanded  # debug
-        
-        return total_expanded, overall_max_pq_size
-        
-        
 
+        return total_expanded, overall_max_pq_size
 
     # Given where the nodes came from, rebuilds the path that was taken to the
     # final node
