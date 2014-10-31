@@ -59,7 +59,7 @@ class Node:
 
         # For each boundary node path, shows where this particular node came
         # from
-        self.arc_flag_paths = np.array([])
+        self.predecessors = np.array([])
 
         # Checks if the node is currently in the queue (won't add otherwise)
         self.in_queue = False
@@ -113,9 +113,14 @@ class Node:
             return self.get_min_boundary_time()
 
 
-class Connection:
+class Link:
     def __init__(self, _id, weight, speed, time):
-        self.isFoward = True
+        self.id = _id  # link_id
+        self.weight = float(weight)  # replacing distance_connections
+        self.speed = float(speed)  # replacing speed_connections
+        self.time = float(weight)/float(speed)  # replacing time_connections
+        # self.forward_connected_node = 
+        # self.backward_connected_node = 
 
 
 # For converting the regions in the ArcFlags csv file back into binary from hex
@@ -233,24 +238,30 @@ def set_up_nodes(time_file, arc_flag_file):
         if counter != 0:
             # Creates the nodes and put them in the dictionary
             # with the _id as the key
+            # node_id, ycoord, xcoord, grid_region_id
             new_node = Node(node[0], node[6], node[5], node[10])
             try:
                 list_of_links = dict_of_links[new_node.id]
                 for link in list_of_links:
-                    if (link[2] != new_node.id and len(link) == 19 and
+                    # if the links.csv file has 16 columns
+                    if len(link) == 16 and link[2] != new_node.id:
+                        new_node.add_connecting_node(
+                            # end_node_id, street_length, speed = 1,
+                            # street_length/1
+                            link[2], link[5], 1, float(link[5])/1)
+
+                    # if the links.csv file has 19 columns
+                    if (len(link) == 19 and link[2] != new_node.id and
                             float(link[17]) > 0):
                         new_node.add_connecting_node(
                             link[2], link[5], link[16], link[17])
                         new_node.set_arc_flags(link[2], link[18])
 
-                    if (link[2] != new_node.id and len(link) == 18 and
+                    # if the links.csv file has 18 columns
+                    if (len(link) == 18 and link[2] != new_node.id and
                             float(link[17]) > 0):
                         new_node.add_connecting_node(
                             link[2], link[5], link[16], link[17])
-
-                    if link[2] != new_node.id and len(link) == 16:
-                        new_node.add_connecting_node(
-                            link[2], link[5], 5, float(link[5])/5)
             except(KeyError):
                 pass
             dict_of_nodes[new_node.id] = new_node

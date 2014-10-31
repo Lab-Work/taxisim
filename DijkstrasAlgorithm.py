@@ -1,6 +1,5 @@
 import Queue
 from AbortedDijkstra import abortedDijkstra
-from datetime import datetime
 
 import numpy as np
 
@@ -44,7 +43,8 @@ class DijkstrasAlgorithm:
                     # Store a deep copy snapshot of time_from_boundary_node for
                     # future comparison
                     node.time_snapshot = np.copy(node.time_from_boundary_node)
-                    node.arc_flag_paths = [None] * len(boundary_nodes_list)
+                    node.predecessors = np.array([None]
+                                                 * len(boundary_nodes_list))
 
     # Computes the shortest path between all pairs of boundary nodes
     # If this id done before the main dijkstra() search, performance should be
@@ -63,22 +63,6 @@ class DijkstrasAlgorithm:
         for boundary_node in boundary_nodes_list:
             np.copyto(boundary_node.time_snapshot,
                       boundary_node.time_from_boundary_node)
-        """
-        #reset all of the labels except the boundary nodes in this region
-        for column in grid_of_nodes:
-            for region in column:
-                for node in region.nodes:
-                    # Each node needs a distance from each boundary node
-                    # all starting at infinity
-                    if (node.is_boundary_node and
-                        node.region_id == boundary_node.region_id):
-                        for boundary_node in boundary_nodes_list:
-                            index = boundary_indices[boundary_node]
-                            node.was_updated.add(index)
-                    else:
-                        node.time_from_boundary_node = (
-                        [float("INF")] * len(boundary_nodes_list))
-        """
         return visited_nodes
 
     # Keeps a dictionary of how far away a given node is away from a given
@@ -115,15 +99,13 @@ class DijkstrasAlgorithm:
                         # For each boundary node path, shows where this
                         # particular node came
                         # from
-                        node.arc_flag_paths = np.array([])
+                        node.predecessors = np.array([])
 
     # Basically creates a tree rooted at the boundary node where every edge in
     # the tree is an arcflag
     @staticmethod
     def dijkstra(boundary_nodes, grid_of_nodes, warm_start,
                  use_domination_value):
-        start_time = datetime.now()
-
         max_queue_size = 0  # debug
         expansion_count = 0  # debug
 
@@ -166,19 +148,13 @@ class DijkstrasAlgorithm:
                     # the actual node itself
                     node))
 
-        counter = 0
-
-        # import pdb; pdb.set_trace()
         while not nodes_to_search.empty():
             # Gets the node closest to the end node in the best case
             if (nodes_to_search.qsize() > max_queue_size):
                 max_queue_size = nodes_to_search.qsize()
-            # if counter % 10000 == 0:
-            #    print str(datetime.now() - start_time) + "   " + str(nodes_to_search.qsize())
-            # counter += 1
 
             queue_item = nodes_to_search.get()
-            old_dom_value, old_min_time, old_inf_count, old_sum = queue_item[0:4]
+            _, old_min_time, old_inf_count, old_sum = queue_item[0:4]
             curr_node = queue_item[4]
 
             # Skip if the item in queue is out-dated
@@ -186,9 +162,6 @@ class DijkstrasAlgorithm:
                     old_inf_count > curr_node.get_boundary_time_inf_count() or
                     old_sum < curr_node.get_boundary_time_sum()):
                 continue
-
-            # if(curr_node.is_boundary_node and curr_node.region_id==this_region_id):
-            #    print "****"+ "(" + str(expansion_count) + " / " + str(counter) + ") BoundaryNode(" + str(curr_node.boundary_node_id) + ") : " + str(old_dom_value)
 
             # Overwrite the snapshot with a copy of the current label
             np.copyto(curr_node.time_snapshot, curr_node.time_from_boundary_node)
@@ -212,15 +185,17 @@ class DijkstrasAlgorithm:
                     proposed_label, connected_node.time_from_boundary_node)
 
                 # If there were any changes, copy and note them
-                has_updates = False
                 if not np.array_equal(proposed_label,
                                       connected_node.time_from_boundary_node):
-                    has_updates = True
+                    # Update the predecessors for the connected nodes that has
+                    # updates
+                    updated = np.nonzero(connected_node.time_from_boundary_node
+                                         - proposed_label)[0]
+                    connected_node.predecessors[updated] = curr_node
                     np.copyto(connected_node.time_from_boundary_node,
                               proposed_label)
-                    # TODO: set connected_node.arc_flag_paths
 
-                if has_updates:
+                    # Put the new connected_node into the priority queue
                     nodes_to_search.put((
                         # times updated since it was last expanded
                         connected_node.get_priority_key(use_domination_value),
@@ -268,6 +243,6 @@ class DijkstrasAlgorithm:
         for column in grid_of_nodes:
             for grid_region in column:
                 for node in grid_region.nodes:
-                    for connection in node.arc_flag_paths:
+                    for connection in node.predecessors:
                         if connection is not None:
                             node.is_arc_flags[connection] = True

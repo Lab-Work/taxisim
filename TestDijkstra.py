@@ -89,14 +89,14 @@ if __name__ == '__main__':
     for (i,j) in regions_of_interest:
         print ("================================== PROCESSING REGION " + str((i,j)) + " =================================")
         print
-        print("---------Independent")
-        TestDijkstra.runIndependently(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_independent.csv")
-        print("---------Minkey Cold")
-        TestDijkstra.run(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_minkey_coldstart.csv", False, False)
+        #print("---------Independent")
+        #TestDijkstra.runIndependently(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_independent.csv")
+        #print("---------Minkey Cold")
+        #TestDijkstra.run(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_minkey_coldstart.csv", False, False)
         print("---------Minkey Warm")
         TestDijkstra.run(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_minkey_warmstart.csv", True, False)
-        print("---------Domkey Cold")
-        TestDijkstra.run(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_domkey_coldstart.csv", False, True)
-        print("---------Domkey Warm")
-        TestDijkstra.run(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_domkey_warmstart.csv", True, True)
+        #print("---------Domkey Cold")
+        #TestDijkstra.run(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_domkey_coldstart.csv", False, True)
+        #print("---------Domkey Warm")
+        #TestDijkstra.run(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_domkey_warmstart.csv", True, True)
     
