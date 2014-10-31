@@ -28,6 +28,7 @@ class Node:
 
         # These are nodes that are connected by edges that start at the current
         # node and their weights
+        self.forward_connections = {}
         self.distance_connections = {}
         self.backwards_connections = {}  # Measured in meters
         self.speed_connections = {}
@@ -110,6 +111,11 @@ class Node:
             return -self.get_domination_value()
         else:
             return self.get_min_boundary_time()
+
+
+class Connection:
+    def __init__(self, _id, weight, speed, time):
+        self.isFoward = True
 
 
 # For converting the regions in the ArcFlags csv file back into binary from hex
@@ -229,19 +235,19 @@ def set_up_nodes(time_file, arc_flag_file):
             # with the _id as the key
             new_node = Node(node[0], node[6], node[5], node[10])
             try:
-                listOfLinks = dict_of_links[new_node.id]
-                for link in listOfLinks:
-                    if link[2] != new_node.id and (
-                        len(link) == 19 and
+                list_of_links = dict_of_links[new_node.id]
+                for link in list_of_links:
+                    if (link[2] != new_node.id and len(link) == 19 and
                             float(link[17]) > 0):
                         new_node.add_connecting_node(
                             link[2], link[5], link[16], link[17])
                         new_node.set_arc_flags(link[2], link[18])
-                    if link[2] != new_node.id and (
-                        len(link) == 18
-                            and float(link[17]) > 0):
+
+                    if (link[2] != new_node.id and len(link) == 18 and
+                            float(link[17]) > 0):
                         new_node.add_connecting_node(
                             link[2], link[5], link[16], link[17])
+
                     if link[2] != new_node.id and len(link) == 16:
                         new_node.add_connecting_node(
                             link[2], link[5], 5, float(link[5])/5)
