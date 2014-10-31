@@ -279,9 +279,9 @@ def get_correct_nodes(num_divisions, time_file, arc_flag_file):
     if time_file is None:
         for node in nodes:
             for connection in node.speed_connections:
-                node.speedConnection[connection] = 5
-                node.timeConnection[connection] = (
-                    node.distanceConnection[connection]/5)
+                node.speed_connections[connection] = 5
+                node.time_connections[connection] = (
+                    node.distance_connections[connection] / 5)
     node_info = get_node_info(nodes)
     return set_up_grid(
         node_info[0] + .01, node_info[1], node_info[2] + .01, node_info[3],
