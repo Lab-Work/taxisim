@@ -49,7 +49,7 @@ def find_nodes(longitude, latitude, grid_of_nodes, node_info, n):
             for node in grid_region.nodes:
                 curr_dist = distance(latitude, longitude, node.lat, node.long)
                 if curr_dist < best_dist and (
-                        len(node.distance_connections) > 0):
+                        len(node.forward_links) > 0):
                     best_node = node
                     best_dist = curr_dist
     return best_node
@@ -109,22 +109,23 @@ def find_shortest_path(start_node, end_node, max_speed):
             reset_nodes(nodes_to_search2)
             reset_nodes(searched_nodes)
             return final_path
-        for connected_node in curr_node.speed_connections:
+        for connected_node in curr_node.forward_links:
             # THE ARCFLAGS PORTION
-            if curr_node.is_arc_flags[connected_node][end_node.region] == 0:
+            if curr_node.is_forward_arc_flags[connected_node][end_node.region] == 0:
                 if curr_node.region != end_node.region:
                     continue
 
             # If we've searched it before or it is non-existent, continue
-            if curr_node.time_connections[connected_node] <= 0:
+            if curr_node.forward_links[connected_node].time <= 0:
                 continue
             if connected_node in searched_nodes:
                 continue
 
             # Checks distance thus far and the best case distance between this
             # point and the endpoint
-            tentative_best = (float(curr_node.time_connections[connected_node])
-                              + curr_node.best_time)
+            tentative_best = (float(
+                curr_node.forward_links[connected_node].time) +
+                curr_node.best_time)
 
             # If we haven't queued it up to search yet, queue it up now.
             # Otherwise, for both of the next two if statements, place the best
@@ -136,8 +137,8 @@ def find_shortest_path(start_node, end_node, max_speed):
                     (heuristic(connected_node, end_node, max_speed) +
                         connected_node.best_time, connected_node))
                 nodes_to_search2.add(connected_node)
-    print start_node.id
-    print end_node.id
+    print start_node.node_id
+    print end_node.node_id
     reset_nodes(nodes_to_search2)
     reset_nodes(searched_nodes)
     return "No Path Found"

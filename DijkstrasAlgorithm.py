@@ -1,18 +1,18 @@
 import Queue
-from AbortedDijkstra import abortedDijkstra
+from AbortedDijkstra import aborted_dijkstra
 
 import numpy as np
 
 
 # An implementation of multi-origin dijkstra
 class DijkstrasAlgorithm:
-    # Gives out sequential id numbers to the boundary nodes in this region
+    # Gives out sequential node_id numbers to the boundary nodes in this region
     # These values are used to index the node.time_from_boundary_node array
     @staticmethod
     def init_boundary_node_ids(list_of_boundary_nodes):
         i = 0
         sorted_boundary_nodes = sorted(list_of_boundary_nodes,
-                                       key=lambda x: x.id)
+                                       key=lambda x: x.node_id)
         for node in sorted_boundary_nodes:
             node.boundary_node_id = i
             i += 1
@@ -20,8 +20,11 @@ class DijkstrasAlgorithm:
     # Sets up lists of "INF" for each nodes, excluding boundary nodes
     @staticmethod
     def initialize_nodes(boundary_nodes_list, grid_of_nodes):
-
-        for tmp_node in boundary_nodes_list:
+        if not boundary_nodes_list:
+            return
+        tmp_node = None
+        for node in boundary_nodes_list:
+            tmp_node = node
             break
         this_region_id = tmp_node.region_id
 
@@ -43,11 +46,11 @@ class DijkstrasAlgorithm:
                     # Store a deep copy snapshot of time_from_boundary_node for
                     # future comparison
                     node.time_snapshot = np.copy(node.time_from_boundary_node)
-                    node.predecessors = np.array([None]
+                    node.forward_predecessors = np.array([None]
                                                  * len(boundary_nodes_list))
 
     # Computes the shortest path between all pairs of boundary nodes
-    # If this id done before the main dijkstra() search, performance should be
+    # If this node_id done before the main dijkstra() search, performance should be
     # much better
     @staticmethod
     def initialize_boundary_nodes(boundary_nodes_list, grid_of_nodes,
@@ -55,7 +58,7 @@ class DijkstrasAlgorithm:
 
         visited_nodes = set()
         for boundary_node in boundary_nodes_list:
-            partial_visited_nodes, _, _ = abortedDijkstra(
+            partial_visited_nodes, _, _ = aborted_dijkstra(
                 boundary_node, boundary_nodes_list, this_region_only)
             visited_nodes.update(partial_visited_nodes)
 
@@ -75,7 +78,7 @@ class DijkstrasAlgorithm:
             for column in grid_of_nodes:
                 for region in column:
                     for node in region.nodes:
-                        dist_dict[(boundnode.id, node.id)] = (
+                        dist_dict[(boundnode.node_id, node.node_id)] = (
                             node.time_from_boundary_node[index])
         return dist_dict
 
@@ -99,7 +102,7 @@ class DijkstrasAlgorithm:
                         # For each boundary node path, shows where this
                         # particular node came
                         # from
-                        node.predecessors = np.array([])
+                        node.forward_predecessors = np.array([])
 
     # Basically creates a tree rooted at the boundary node where every edge in
     # the tree is an arcflag
@@ -119,7 +122,7 @@ class DijkstrasAlgorithm:
 
         # Compute pairwise distances between boundary nodes, so only good
         # information is propagated
-        if(warm_start):
+        if warm_start:
             print("warmstarting")
             touched_nodes = DijkstrasAlgorithm.initialize_boundary_nodes(
                 boundary_nodes, grid_of_nodes, False)
@@ -135,7 +138,7 @@ class DijkstrasAlgorithm:
         nodes_to_search = Queue.PriorityQueue()
 
         for node in touched_nodes:
-            if(warm_start is False or node.get_boundary_time_inf_count() == 0):
+            if warm_start is False or node.get_boundary_time_inf_count() == 0:
                 nodes_to_search.put((
                     # times updated since it was last expanded
                     node.get_priority_key(use_domination_value),
@@ -168,16 +171,16 @@ class DijkstrasAlgorithm:
 
             # expansion of curr_node starts here
             expansion_count += 1
-            for connected_node in curr_node.backwards_connections:
+            for connected_node in curr_node.backward_links:
 
-                if connected_node.time_connections[curr_node] <= 0:
+                if connected_node.forward_links[curr_node].time <= 0:
                     continue
 
                 # The proposed distances from all boundary nodes if you go
                 # through curr_node i.e. curr_node's distances from the
                 # boundary nodes + the length of this link
                 proposed_label = (curr_node.time_from_boundary_node +
-                                  connected_node.time_connections[curr_node])
+                                  connected_node.forward_links[curr_node].time)
 
                 # Only shorter paths are accepted - perform the element-wise
                 # min against current values
@@ -187,11 +190,11 @@ class DijkstrasAlgorithm:
                 # If there were any changes, copy and note them
                 if not np.array_equal(proposed_label,
                                       connected_node.time_from_boundary_node):
-                    # Update the predecessors for the connected nodes that has
+                    # Update the forward_predecessors for the connected nodes that has
                     # updates
                     updated = np.nonzero(connected_node.time_from_boundary_node
                                          - proposed_label)[0]
-                    connected_node.predecessors[updated] = curr_node
+                    connected_node.forward_predecessors[updated] = curr_node
                     np.copyto(connected_node.time_from_boundary_node,
                               proposed_label)
 
@@ -227,7 +230,7 @@ class DijkstrasAlgorithm:
         total_expanded = 0
         overall_max_pq_size = 0
         for boundary_node in boundary_nodes:
-            _, num_expanded, max_pq_size = abortedDijkstra(boundary_node, None)
+            _, num_expanded, max_pq_size = aborted_dijkstra(boundary_node, None)
             total_expanded += num_expanded
             overall_max_pq_size = max(overall_max_pq_size, max_pq_size)
 
@@ -243,6 +246,6 @@ class DijkstrasAlgorithm:
         for column in grid_of_nodes:
             for grid_region in column:
                 for node in grid_region.nodes:
-                    for connection in node.predecessors:
+                    for connection in node.forward_predecessors:
                         if connection is not None:
-                            node.is_arc_flags[connection] = True
+                            node.is_forward_arc_flags[connection] = True

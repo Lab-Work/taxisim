@@ -124,5 +124,5 @@ class MinDistDijkstrasAlgorithm:
                 for node in grid_region.nodes:
                     for connection in node.arc_flag_paths:
                         if connection is not None:
-                            node.is_arc_flags[connection] = True
+                            node.is_forward_arc_flags[connection] = True
                 MinDistDijkstrasAlgorithm.reset_nodes(grid_region.nodes)

@@ -10,7 +10,7 @@ for column in grid_of_nodes:
     j = 0
     for grid_region in column:
         for node in grid_region.nodes:
-            dist_of_nodes[node.id] = 20 * i + j
+            dist_of_nodes[node.node_id] = 20 * i + j
         j += 1
     i += 1
 # Will contain all the normal CSV info for the nodes, plus a region number

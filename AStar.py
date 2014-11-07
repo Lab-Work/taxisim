@@ -52,7 +52,7 @@ def find_nodes(longitude, latitude, grid_of_nodes, node_info, n):
                 currDistance = distance(latitude, longitude, node.lat,
                                         node.long)
                 if currDistance < best_distance and (
-                        len(node.distance_connections) > 0):
+                        len(node.forkward_links) > 0):
                     best_node = node
                     best_distance = currDistance
     return best_node
@@ -112,10 +112,10 @@ def find_shortest_path(start_node, end_node, max_speed):
             return final_path
 
         # Look through all of its neighbors
-        for connected_node in curr_node.time_connections:
+        for connected_node in curr_node.forward_links:
 
             # If we've searched it before or it is non-existent, continue
-            if curr_node.time_connections[connected_node] <= 0:
+            if curr_node.forward_links[connected_node].time <= 0:
                 continue
             if connected_node in searchednodes:
                 continue
@@ -123,7 +123,7 @@ def find_shortest_path(start_node, end_node, max_speed):
             # Checks distance thus far and the best case distance between this
             # point and the end point
             tentative_best = (
-                float(curr_node.time_connections[connected_node]) +
+                float(curr_node.forward_links[connected_node].time) +
                 curr_node.best_time)
 
             # If we haven't queued it up to search yet, queue it up now.
@@ -137,8 +137,8 @@ def find_shortest_path(start_node, end_node, max_speed):
                         connected_node.best_time,
                         connected_node))
                 nodes_to_search2.add(connected_node)
-    print start_node.id
-    print end_node.id
+    print start_node.node_id
+    print end_node.node_id
     reset_nodes(nodes_to_search2)
     reset_nodes(searchednodes)
     return "No Path Found"

@@ -12,8 +12,8 @@ class ArcFlagsPreProcess:
         for column in grid_of_nodes:
             for region in column:
                 for node in region.nodes:
-                    for connection in node.is_arc_flags:
-                        node.is_arc_flags[connection] = False
+                    for connection in node.is_forward_arc_flags:
+                        node.is_forward_arc_flags[connection] = False
 
     # Converts an arcflag binary string to hexadecimal so that it can be stored
     # in text easier
@@ -36,11 +36,11 @@ class ArcFlagsPreProcess:
         for column in grid_of_nodes:
             for grid_region in column:
                 for node in grid_region.nodes:
-                    for conn in node.is_arc_flags:
+                    for conn in node.is_forward_arc_flags:
                         dictionary_of_arc_flags[
-                            (str(node.id), str(conn.id))] = [0] * 400
-                        if node.speed_connections[conn] > fastest_velocity:
-                            fastest_velocity = node.speed_connections[conn]
+                            (str(node.node_id), str(conn.node_id))] = [0] * 400
+                        if node.forward_links[conn].speed > fastest_velocity:
+                            fastest_velocity = node.forward_links[conn].speed
         start = timeit.default_timer()
         for column in grid_of_nodes:
             for grid_region in column:  # one grid to test
@@ -56,16 +56,19 @@ class ArcFlagsPreProcess:
 
                 start = timeit.default_timer()
                 # Does a multi-dijkstra search to get an arcflag tree
-                DijkstrasAlgorithm.dijkstra(set_of_nodes, grid_of_nodes)
+                warmstart = True
+                use_domination_value = False
+                DijkstrasAlgorithm.dijkstra(set_of_nodes, grid_of_nodes,
+                                            warmstart, use_domination_value)
                 for column in grid_of_nodes:
                     for grid_region in column:
                         for node in grid_region.nodes:
-                            for conn in node.is_arc_flags:
-                                if node.is_arc_flags[conn]:
+                            for conn in node.is_forward_arc_flags:
+                                if node.is_forward_arc_flags[conn]:
                                     # A new arcFlag entry - start_node,
                                     # end_node, region, arcflags go to
                                     dictionary_of_arc_flags[(
-                                        str(node.id), str(conn.id))][i] = 1
+                                        str(node.node_id), str(conn.node_id))][i] = 1
                 ArcFlagsPreProcess.reset_arc_flags(grid_of_nodes)
                 i += 1
                 break  # debug - only process one grid
@@ -77,7 +80,7 @@ class ArcFlagsPreProcess:
         # This is a hexadecimal string that converts region to true or false
         headers = ["start_nodeID", "end_nodeID", "hexStringOfRegions"]
         # RegionNumber   = 0, 1, 2, 3, 4, 5, 6, 7
-        # is_arc_flags   = 0, 1, 1, 0, 1, 1, 0, 1
+        # is_forward_arc_flags   = 0, 1, 1, 0, 1, 1, 0, 1
         # HexString      = 6D
 
         link_file.writerow(headers)

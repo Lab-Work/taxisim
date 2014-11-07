@@ -70,16 +70,16 @@ def create_datetime(date_time):
 def find_adjacent(node_tuple, dict_of_streets):
     all_adjacent = set()
     for node in node_tuple[0].distance_connections:
-        if (node_tuple[0].id, node.id) in dict_of_streets:
+        if (node_tuple[0].node_id, node.node_id) in dict_of_streets:
             all_adjacent.add((node_tuple[0], node))
     for node in node_tuple[0].backwards_connections:
-        if (node.id, node_tuple[0].id) in dict_of_streets:
+        if (node.node_id, node_tuple[0].node_id) in dict_of_streets:
             all_adjacent.add((node, node_tuple[0]))
     for node in node_tuple[1].distance_connections:
-        if (node_tuple[1].id, node.id) in dict_of_streets:
+        if (node_tuple[1].node_id, node.node_id) in dict_of_streets:
             all_adjacent.add((node_tuple[1], node))
     for node in node_tuple[1].backwards_connections:
-        if (node.id, node_tuple[1].id) in dict_of_streets:
+        if (node.node_id, node_tuple[1].node_id) in dict_of_streets:
             all_adjacent.add((node, node_tuple[1]))
     return all_adjacent
 
@@ -128,7 +128,7 @@ def build_dictionary(path):
     for i in range(len(path) - 1):
         curr_node = path[i]
         next_node = path[i + 1]
-        _id = (curr_node.id, next_node.id)
+        _id = (curr_node.node_id, next_node.node_id)
         dictionary[_id] = (curr_node, next_node)
     return dictionary
 
@@ -165,14 +165,14 @@ def build_all_streets_used(path):
     for i in range(len(path) - 1):
         curr_node = path[i]
         next_node = path[i + 1]
-        new_set.add((curr_node.id, next_node.id))
+        new_set.add((curr_node.node_id, next_node.node_id))
     return new_set
 
 
 def get_sorted_unused_streets(all_streets, dict_of_streets):
     unused_streets = []
     for street in all_streets:
-        if (street[0].id, street[1].id) not in dict_of_streets:
+        if (street[0].node_id, street[1].node_id) not in dict_of_streets:
             all_adjacent = find_adjacent(street, dict_of_streets)
             unused_streets.append((len(all_adjacent), street))
     unused_streets.sort(key=lambda street: street[0])
@@ -219,7 +219,7 @@ def MITSpeedAlgorithm(read_from, start_time, kill_time, fileName):
                     continue
                 if beginnode is None or end_node is None:
                     continue
-                newEntry = (beginnode.id, end_node.id)
+                newEntry = (beginnode.node_id, end_node.node_id)
                 dictionary_cab[newEntry] = row
                 if newEntry in dictionary_time_agg:
                     dictionary_time_agg[newEntry] += float((
@@ -296,8 +296,8 @@ def MITSpeedAlgorithm(read_from, start_time, kill_time, fileName):
     # MIRROR OF PSUEDO CODE: PART 5.1, SET AGAIN = TRUE
     again = True
 
-    # This is a dictionary of sets - give it a streetID (start_node.id,
-    # end_node.id) and it will return the set of trips that include that
+    # This is a dictionary of sets - give it a streetID (start_node.node_id,
+    # end_node.node_id) and it will return the set of trips that include that
     # street and O_s
     dict_of_streets = dict()
     time_outer_loop = 0
@@ -487,7 +487,7 @@ def MITSpeedAlgorithm(read_from, start_time, kill_time, fileName):
                         all_velocities))
             else:
                 curr_pair[0].time_connections[curr_pair[1]] = -1
-            dict_of_streets[(curr_pair[0].id, curr_pair[1].id)] = (
+            dict_of_streets[(curr_pair[0].node_id, curr_pair[1].node_id)] = (
                 curr_pair[0], curr_pair[1])
 
     ##########################################
@@ -503,7 +503,7 @@ def MITSpeedAlgorithm(read_from, start_time, kill_time, fileName):
     headers = ["begin_node_id", "end_node_id", "length", "speed", "time"]
     link_file.writerow(headers)
     for node_tuple in all_streets:
-        new_arr = [node_tuple[0].id, node_tuple[1].id,
+        new_arr = [node_tuple[0].node_id, node_tuple[1].node_id,
                    node_tuple[0].distance_connections[node_tuple[1]],
                    node_tuple[0].speed_connections[node_tuple[1]],
                    node_tuple[0].time_connections[node_tuple[1]]]
