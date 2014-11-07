@@ -75,14 +75,14 @@ class Node:
     def get_domination_value(self):
         return np.sum(self.time_from_boundary_node != self.time_snapshot)
 
-    # Given an _id, gives its weight
-    def add_connecting_node(self, _id, weight, speed, time):
-        self.forward_links[_id] = Link(_id, weight, speed, time)
+    # Given an node_id, gives its weight
+    def add_connecting_node(self, node_id, weight, speed, time):
+        self.forward_links[node_id] = Link(node_id, weight, speed, time)
 
-    def set_arc_flags(self, _id, hex_string):
+    def set_arc_flags(self, node_id, hex_string):
         new_list = hex_deconverter(hex_string)
-        self.is_forward_arc_flags[_id] = new_list
-        self.is_backward_arc_flags[_id] = new_list
+        self.is_forward_arc_flags[node_id] = new_list
+        self.is_backward_arc_flags[node_id] = new_list
 
     def get_min_boundary_time(self):
         return np.min(self.time_from_boundary_node)
@@ -129,7 +129,7 @@ def fix_nodes(dict_of_nodes, has_speeds, has_arc_flags):
                 if new_node != -1:
                     # The new way is pass in a node, instead of the node_id
                     old_link = curr_node.forward_links[connecting_node_id]
-                    old_link.add_connecting_node(new_node)
+                    old_link.connecting_node = new_node
                     new_forward_links[new_node] = old_link
 
                     # Set is_forward_arc_flags[new_node] = secondDict{}
@@ -208,7 +208,7 @@ def set_up_nodes(time_file, arc_flag_file):
         # Want to ignore the header line
         if counter != 0:
             # Creates the nodes and put them in the dictionary
-            # with the _id as the key
+            # with the node_id as the key
             # node_id, ycoord, xcoord, grid_region_id
             new_node = Node(node[0], node[6], node[5], node[10])
             try:
@@ -237,11 +237,11 @@ def set_up_nodes(time_file, arc_flag_file):
                 pass
             dict_of_nodes[new_node.node_id] = new_node
         counter += 1
-    # Changes what they connections keys are (from node _id's to nodes)
+    # Changes what they connections keys are (from node_id's to nodes)
     fix_nodes(dict_of_nodes, speed_of_links, arc_flags)
     set_of_nodes = set()
-    for _id in dict_of_nodes:
-        set_of_nodes.add(dict_of_nodes[_id])
+    for node_id in dict_of_nodes:
+        set_of_nodes.add(dict_of_nodes[node_id])
     return set_of_nodes
 
 

@@ -46,12 +46,12 @@ class DijkstrasAlgorithm:
                     # Store a deep copy snapshot of time_from_boundary_node for
                     # future comparison
                     node.time_snapshot = np.copy(node.time_from_boundary_node)
-                    node.forward_predecessors = np.array([None]
-                                                 * len(boundary_nodes_list))
+                    node.forward_predecessors = (
+                        np.array([None] * len(boundary_nodes_list)))
 
     # Computes the shortest path between all pairs of boundary nodes
-    # If this node_id done before the main dijkstra() search, performance should be
-    # much better
+    # If this node_id done before the main dijkstra() search, performance
+    # should be much better
     @staticmethod
     def initialize_boundary_nodes(boundary_nodes_list, grid_of_nodes,
                                   this_region_only):
@@ -190,8 +190,8 @@ class DijkstrasAlgorithm:
                 # If there were any changes, copy and note them
                 if not np.array_equal(proposed_label,
                                       connected_node.time_from_boundary_node):
-                    # Update the forward_predecessors for the connected nodes that has
-                    # updates
+                    # Update the forward_predecessors for the connected nodes
+                    # that has updates
                     updated = np.nonzero(connected_node.time_from_boundary_node
                                          - proposed_label)[0]
                     connected_node.forward_predecessors[updated] = curr_node
@@ -230,7 +230,8 @@ class DijkstrasAlgorithm:
         total_expanded = 0
         overall_max_pq_size = 0
         for boundary_node in boundary_nodes:
-            _, num_expanded, max_pq_size = aborted_dijkstra(boundary_node, None)
+            _, num_expanded, max_pq_size = aborted_dijkstra(
+                boundary_node, None)
             total_expanded += num_expanded
             overall_max_pq_size = max(overall_max_pq_size, max_pq_size)
 
