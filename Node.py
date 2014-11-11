@@ -51,7 +51,8 @@ class Node:
         # self.was_updated = set()
 
         # For multi-origin dijkstra, storing the time from each boundary node
-        self.time_from_boundary_node = np.array([])
+        self.forward_boundary_time = np.array([])
+        self.backward_boundary_time = np.array([])
 
         # A snapshot of the time_from_boundary_node from the last expansion
         self.time_snapshot = np.array([])
@@ -71,44 +72,59 @@ class Node:
         # Identifies which region this node belongs to
         self.region_id = (None, None)
 
-    # Compare time_from_boundary_node with the snapshot from its last expansion
-    def get_domination_value(self):
-        return np.sum(self.time_from_boundary_node != self.time_snapshot)
-
     # Given an node_id, gives its weight
     def add_connecting_node(self, node_id, weight, speed, time):
         self.forward_links.append(Link(node_id, weight, speed, time))
 
     def set_arc_flags(self, node_id, hex_string):
+        # DEPRECATED!
         new_list = hex_deconverter(hex_string)
         self.is_forward_arc_flags[node_id] = new_list
         self.is_backward_arc_flags[node_id] = new_list
 
-    def get_min_boundary_time(self):
-        return np.min(self.time_from_boundary_node)
-
-    def get_boundary_time_inf_count(self):
-        return np.sum(self.time_from_boundary_node == float('inf'))
-
-    def get_boundary_time_sum(self):
-        finite_numbers = self.time_from_boundary_node[
-            np.isfinite(self.time_from_boundary_node)]
-        return np.sum(finite_numbers)
-
-    def get_priority_key(self, use_domination_value):
-        if(use_domination_value):
-            return -self.get_domination_value()
+    def get_boundary_time_inf_count(self, on_forward_graph):
+        if on_forward_graph:
+            return np.sum(self.forward_boundary_time == float('inf'))
         else:
-            return self.get_min_boundary_time()
+            return np.sum(self.backward_boundary_time == float('inf'))
+
+    # Compare time_from_boundary_node with the snapshot from its last expansion
+    def get_domination_value(self, on_forward_graph):
+        if on_forward_graph:
+            return np.sum(self.forward_boundary_time != self.time_snapshot)
+        else:
+            return np.sum(self.backward_boundary_time != self.time_snapshot)
+
+    def get_min_boundary_time(self, on_forward_graph):
+        if on_forward_graph:
+            return np.min(self.forward_boundary_time)
+        else:
+            return np.min(self.backward_boundary_time)
+
+    def get_boundary_time_sum(self, on_forward_graph):
+        if on_forward_graph:
+            finite_numbers = self.forward_boundary_time[
+                np.isfinite(self.forward_boundary_time)]
+            return np.sum(finite_numbers)
+        else:
+            finite_numbers = self.backward_boundary_time[
+                np.isfinite(self.backward_boundary_time)]
+            return np.sum(finite_numbers)
+
+    def get_priority_key(self, use_domination_value, on_forward_graph):
+        if(use_domination_value):
+            return -self.get_domination_value(on_forward_graph)
+        else:
+            return self.get_min_boundary_time(on_forward_graph)
 
 
 # For converting the regions in the ArcFlags csv file back into binary from hex
 def hex_deconverter(hex_string):
-    newString = bin(int(hex_string, 16))[2:]
-    newList = map(int, list(newString))
-    if len(newList) < 400:
-        newList = [0] * (400 - len(newList)) + newList
-    return newList
+    new_str = bin(int(hex_string, 16))[2:]
+    new_list = map(int, list(new_str))
+    if len(new_list) < 400:
+        new_list = [0] * (400 - len(new_list)) + new_list
+    return new_list
 
 ##############################
 #        NON ARC FLAG        #
@@ -123,7 +139,8 @@ def fix_nodes(dict_of_nodes, has_speeds, has_arc_flags):
 
         # TODO: remove new_forward_links and forward_arc_flags
         new_forward_links = []
-        forward_arc_flags = []
+        forward_arc_flags = {}
+        backward_arc_flags = {}
 
         for connecting_link in curr_node.forward_links:
             try:
@@ -137,19 +154,23 @@ def fix_nodes(dict_of_nodes, has_speeds, has_arc_flags):
                     # secondDict[RegionNumber] = True or False
                     if has_arc_flags is None:
                         curr_node.is_forward_arc_flags[new_node] = False
+                        curr_node.is_backward_arc_flags[new_node] = False
                     else:
+                        # DEPRECATED
                         forward_arc_flags[new_node] = (
                             curr_node.is_forward_arc_flags[connecting_link])
+                        backward_arc_flags[new_node] = (
+                            curr_node.is_backward_arc_flags[connecting_link])
             except(KeyError):
                 pass
         curr_node.forward_links = new_forward_links
         if has_arc_flags is not None:
             curr_node.is_forward_arc_flags = forward_arc_flags
+            curr_node.is_backward_arc_flags = backward_arc_flags
 
     for node_id in dict_of_nodes:
         node = dict_of_nodes[node_id]
         for connecting_link in node.forward_links:
-            #connecting_link.origin_node = node
             connecting_node = connecting_link.connecting_node
             if connecting_node is None:
                 pass
@@ -238,6 +259,7 @@ def set_up_nodes(time_file, arc_flag_file):
                             float(link[17]) > 0):
                         new_node.add_connecting_node(
                             link[2], link[5], link[16], link[17])
+
             except(KeyError):
                 pass
             dict_of_nodes[new_node.node_id] = new_node

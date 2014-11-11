@@ -30,7 +30,7 @@ class TestDijkstra:
             for grid_region in column:
                 for node in grid_region.nodes:
                     output_table.append([node.node_id] +
-                                        list(node.time_from_boundary_node))
+                                        list(node.forward_boundary_time))
 
         # sort the rows and write them to CSV file
         output_table.sort(key=lambda x: x[0])
@@ -56,8 +56,10 @@ class TestDijkstra:
 
         # Run Dijkstra's algorithm with multiple origins and time it
         start_time = datetime.now()
-        DijkstrasAlgorithm.dijkstra(boundary_nodes, grid_of_nodes, warmstart,
-                                    use_domination_value)
+        DijkstrasAlgorithm.bidirectional_dijkstra(boundary_nodes,
+                                                  grid_of_nodes,
+                                                  warmstart,
+                                                  use_domination_value)
         print datetime.now() - start_time
 
         TestDijkstra.output_labels(grid_of_nodes, boundary_nodes, outfile)
@@ -73,7 +75,7 @@ class TestDijkstra:
 
         # Run Dijkstra's algorithm with each origin independently and time it
         start_time = datetime.now()
-        DijkstrasAlgorithm.independentDijkstra(boundary_nodes, grid_of_nodes)
+        DijkstrasAlgorithm.independent_dijkstra(boundary_nodes, grid_of_nodes)
         print datetime.now() - start_time
 
         TestDijkstra.output_labels(grid_of_nodes, boundary_nodes, outfile)

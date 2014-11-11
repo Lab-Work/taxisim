@@ -18,9 +18,11 @@ from Queue import PriorityQueue
 #    this_region_only - if True, ignore nodes from other regions (WARNING:
 #                       shortest path between two boundary nodes may go outside
 #                       of region.)
+#    on_forward_graph - if True, use the backward_links to expand
 # returns:
 #    nodes_to_search - the "frontier" of nodes which have been touche
-def aborted_dijkstra(origin_node, boundary_nodes, this_region_only=False):
+def aborted_dijkstra(origin_node, boundary_nodes, this_region_only=False,
+                     on_forward_graph=True):
     # maintain set of boundary  nodes that have been visited by this search
     visited_boundary_nodes = set()
     visited_nodes = set()
@@ -46,24 +48,40 @@ def aborted_dijkstra(origin_node, boundary_nodes, this_region_only=False):
            node.region_id == origin_node.region_id):
             visited_boundary_nodes.add(node)
             # If we have now visited all boundary nodes, stop early
-            if(len(visited_boundary_nodes) == len(boundary_nodes)):
+            if len(visited_boundary_nodes) == len(boundary_nodes):
                 break
-
-        # Propagate to neighbors
-        for connecting_link in node.backward_links:
-            neighbor = connecting_link.origin_node
+        connecting_links = None
+        if on_forward_graph:
+            connecting_links = node.backward_links
+        else:
+            connecting_links = node.forward_links
+        # Propagate to neighbors on the forward graph using the backward links
+        for connecting_link in connecting_links:
+            neighbor = None
+            if on_forward_graph:
+                neighbor = connecting_link.origin_node
+            else:
+                neighbor = connecting_link.connecting_node
             # if this_region_only is set, then skip nodes from other regions
             if(this_region_only and
                neighbor.region_id != origin_node.region_id):
                 continue
+            time_from_boundary_node = None
+            neighbor_time = None
+            if on_forward_graph:
+                time_from_boundary_node = node.forward_boundary_time
+                neighbor_time = neighbor.forward_boundary_time
+            else:
+                time_from_boundary_node = node.backward_boundary_time
+                neighbor_time = neighbor.backward_boundary_time
             # Compute the distance if we were to travel to the neighbor from
             # the current node
-            proposed_distance = (node.time_from_boundary_node[i] +
+            proposed_distance = (time_from_boundary_node[i] +
                                  connecting_link.time)
             # If this is better than the current best path to the neighbor,
             # update it (relaxation)
-            if(proposed_distance < neighbor.time_from_boundary_node[i]):
-                neighbor.time_from_boundary_node[i] = proposed_distance
+            if(proposed_distance < neighbor_time[i]):
+                neighbor_time[i] = proposed_distance
                 # since the distance was updated, this node needs to be
                 # re-added to the PQ
                 nodes_to_search.put((proposed_distance, neighbor))
