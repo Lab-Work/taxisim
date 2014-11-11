@@ -109,23 +109,22 @@ def find_shortest_path(start_node, end_node, max_speed):
             reset_nodes(nodes_to_search2)
             reset_nodes(searched_nodes)
             return final_path
-        for connected_node in curr_node.forward_links:
+        for connected_link in curr_node.forward_links:
+            connected_node = connected_link.connecting_node
             # THE ARCFLAGS PORTION
             if curr_node.is_forward_arc_flags[connected_node][end_node.region] == 0:
                 if curr_node.region != end_node.region:
                     continue
 
             # If we've searched it before or it is non-existent, continue
-            if curr_node.forward_links[connected_node].time <= 0:
+            if connected_link.time <= 0:
                 continue
             if connected_node in searched_nodes:
                 continue
 
             # Checks distance thus far and the best case distance between this
             # point and the endpoint
-            tentative_best = (float(
-                curr_node.forward_links[connected_node].time) +
-                curr_node.best_time)
+            tentative_best = float(connected_link.time) + curr_node.best_time
 
             # If we haven't queued it up to search yet, queue it up now.
             # Otherwise, for both of the next two if statements, place the best

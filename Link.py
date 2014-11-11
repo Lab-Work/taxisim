@@ -5,4 +5,5 @@ class Link:
         self.weight = float(weight)
         self.speed = float(speed)
         self.time = float(weight) / float(speed)
+        self.origin_node = None
         self.connecting_node = None

@@ -39,8 +39,9 @@ class ArcFlagsPreProcess:
                     for conn in node.is_forward_arc_flags:
                         dictionary_of_arc_flags[
                             (str(node.node_id), str(conn.node_id))] = [0] * 400
-                        if node.forward_links[conn].speed > fastest_velocity:
-                            fastest_velocity = node.forward_links[conn].speed
+                    for link in node.forward_links:
+                        if link.speed > fastest_velocity:
+                            fastest_velocity = link.speed
         start = timeit.default_timer()
         for column in grid_of_nodes:
             for grid_region in column:  # one grid to test

@@ -45,12 +45,13 @@ def aborted_dijkstra(origin_node, boundary_nodes, this_region_only=False):
         if(boundary_nodes is not None and node.is_boundary_node and
            node.region_id == origin_node.region_id):
             visited_boundary_nodes.add(node)
-            # If we have now visited all bondary nodes, stop early
+            # If we have now visited all boundary nodes, stop early
             if(len(visited_boundary_nodes) == len(boundary_nodes)):
                 break
 
         # Propagate to neighbors
-        for neighbor in node.backward_links:
+        for connecting_link in node.backward_links:
+            neighbor = connecting_link.origin_node
             # if this_region_only is set, then skip nodes from other regions
             if(this_region_only and
                neighbor.region_id != origin_node.region_id):
@@ -58,7 +59,7 @@ def aborted_dijkstra(origin_node, boundary_nodes, this_region_only=False):
             # Compute the distance if we were to travel to the neighbor from
             # the current node
             proposed_distance = (node.time_from_boundary_node[i] +
-                                 neighbor.forward_links[node].time)
+                                 connecting_link.time)
             # If this is better than the current best path to the neighbor,
             # update it (relaxation)
             if(proposed_distance < neighbor.time_from_boundary_node[i]):

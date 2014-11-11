@@ -171,16 +171,17 @@ class DijkstrasAlgorithm:
 
             # expansion of curr_node starts here
             expansion_count += 1
-            for connected_node in curr_node.backward_links:
+            for connected_link in curr_node.backward_links:
+                connected_node = connected_link.origin_node
 
-                if connected_node.forward_links[curr_node].time <= 0:
+                if connected_link.time <= 0:
                     continue
 
                 # The proposed distances from all boundary nodes if you go
                 # through curr_node i.e. curr_node's distances from the
                 # boundary nodes + the length of this link
                 proposed_label = (curr_node.time_from_boundary_node +
-                                  connected_node.forward_links[curr_node].time)
+                                  connected_link.time)
 
                 # Only shorter paths are accepted - perform the element-wise
                 # min against current values

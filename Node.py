@@ -29,8 +29,8 @@ class Node:
 
         # These are nodes that are connected by edges that start at the current
         # node and their weights
-        self.forward_links = {}
-        self.backward_links = {}
+        self.forward_links = []
+        self.backward_links = []
 
         self.is_forward_arc_flags = {}
         self.is_backward_arc_flags = {}
@@ -77,7 +77,7 @@ class Node:
 
     # Given an node_id, gives its weight
     def add_connecting_node(self, node_id, weight, speed, time):
-        self.forward_links[node_id] = Link(node_id, weight, speed, time)
+        self.forward_links.append(Link(node_id, weight, speed, time))
 
     def set_arc_flags(self, node_id, hex_string):
         new_list = hex_deconverter(hex_string)
@@ -120,17 +120,18 @@ def hex_deconverter(hex_string):
 def fix_nodes(dict_of_nodes, has_speeds, has_arc_flags):
     for node_id in dict_of_nodes:
         curr_node = dict_of_nodes[node_id]
-        new_forward_links = {}
-        forward_arc_flags = {}
 
-        for connecting_node_id in curr_node.forward_links:
+        # TODO: remove new_forward_links and forward_arc_flags
+        new_forward_links = []
+        forward_arc_flags = []
+
+        for connecting_link in curr_node.forward_links:
             try:
-                new_node = dict_of_nodes[connecting_node_id]
+                new_node = dict_of_nodes[connecting_link.origin_node_id]
                 if new_node != -1:
-                    # The new way is pass in a node, instead of the node_id
-                    old_link = curr_node.forward_links[connecting_node_id]
-                    old_link.connecting_node = new_node
-                    new_forward_links[new_node] = old_link
+                    connecting_link.origin_node = curr_node
+                    connecting_link.connecting_node = new_node
+                    new_forward_links.append(connecting_link)
 
                     # Set is_forward_arc_flags[new_node] = secondDict{}
                     # secondDict[RegionNumber] = True or False
@@ -138,7 +139,7 @@ def fix_nodes(dict_of_nodes, has_speeds, has_arc_flags):
                         curr_node.is_forward_arc_flags[new_node] = False
                     else:
                         forward_arc_flags[new_node] = (
-                            curr_node.is_forward_arc_flags[connecting_node_id])
+                            curr_node.is_forward_arc_flags[connecting_link])
             except(KeyError):
                 pass
         curr_node.forward_links = new_forward_links
@@ -147,8 +148,12 @@ def fix_nodes(dict_of_nodes, has_speeds, has_arc_flags):
 
     for node_id in dict_of_nodes:
         node = dict_of_nodes[node_id]
-        for connecting_node, link in node.forward_links.iteritems():
-            connecting_node.backward_links[node] = link
+        for connecting_link in node.forward_links:
+            #connecting_link.origin_node = node
+            connecting_node = connecting_link.connecting_node
+            if connecting_node is None:
+                pass
+            connecting_node.backward_links.append(connecting_link)
             if connecting_node.region != node.region:
                 connecting_node.is_boundary_node = True
 
@@ -266,7 +271,7 @@ def get_correct_nodes(num_divisions, time_file, arc_flag_file):
     nodes = set_up_nodes(time_file, arc_flag_file)
     if time_file is None:
         for node in nodes:
-            for link in node.forward_links.itervalues():
+            for link in node.forward_links:
                 link.speed = 5
                 link.time = link.weight / 5
     node_info = get_node_info(nodes)

@@ -29,9 +29,9 @@ def find_nodes(longitude, latitude, grid_of_nodes, node_info, n):
     # Node closest to coords and its distance
     best_node = None
     best_distance = 1000000
-    i = int(float(longitude - node_info[3]) *
+    i = int(float(longitude - node_info[3]) * 
             (n / float(node_info[2] - node_info[3])))
-    j = int(float(latitude - node_info[1]) *
+    j = int(float(latitude - node_info[1]) * 
             (n / float(node_info[0] - node_info[1])))
 
     # You have to check the surrounding area (if a coordinate is really close
@@ -112,19 +112,17 @@ def find_shortest_path(start_node, end_node, max_speed):
             return final_path
 
         # Look through all of its neighbors
-        for connected_node in curr_node.forward_links:
-
+        for connected_link in curr_node.forward_links:
+            connected_node = connected_link.connecting_node
             # If we've searched it before or it is non-existent, continue
-            if curr_node.forward_links[connected_node].time <= 0:
+            if connected_link.time <= 0:
                 continue
             if connected_node in searchednodes:
                 continue
 
             # Checks distance thus far and the best case distance between this
             # point and the end point
-            tentative_best = (
-                float(curr_node.forward_links[connected_node].time) +
-                curr_node.best_time)
+            tentative_best = float(connected_link.time) + curr_node.best_time
 
             # If we haven't queued it up to search yet, queue it up now.
             # Otherwise, for both of the next two if statements, place the best
@@ -133,7 +131,7 @@ def find_shortest_path(start_node, end_node, max_speed):
                 connected_node.came_from = curr_node
                 connected_node.best_time = tentative_best
                 nodes_to_search.put(
-                    (heuristic(connected_node, end_node, max_speed) +
+                    (heuristic(connected_node, end_node, max_speed) + 
                         connected_node.best_time,
                         connected_node))
                 nodes_to_search2.add(connected_node)
