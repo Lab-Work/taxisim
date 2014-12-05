@@ -10,6 +10,15 @@ HEURISTIC_DISCOUNT = .8
 
 
 # Uses bidirectional search to find the shortest path between start_node and end_node
+# Params:
+    # start_node - the node at the beginning of the path
+    # end_node - the node at the end of the path
+    # use_astar - use euclidean distance heuristic to guide the search using A*
+    # use_arcflags - if arcflags are pre-computed on the links, search can be drastically improved
+    # max_speed - maximum speed on any link in the graph. used for the A* heuristic
+# Returns:
+    # path - a list of Links on the shortest path, in order
+    # num_expanded - the number of nodes that were expanded during hte search
 def bidirectional_search(start_node, end_node, use_astar=False, use_arcflags=False, max_speed=1.0):
     # Step 1 - perform the actual dijkstra search
     (center_node, forward_pq, forward_expanded, backward_pq, backward_expanded) = bidirectional_dijkstra(start_node, end_node, use_astar, use_arcflags, max_speed)
@@ -25,15 +34,20 @@ def bidirectional_search(start_node, end_node, use_astar=False, use_arcflags=Fal
     cleanup(forward_pq, forward_expanded, backward_pq, backward_expanded)
     return path, num_expanded
 
-
+# Helper method - you should probably call bidirectiona_search() instead, since that also cleans up after
 # Runs a forward and backward dijkstra algorithms, stopping when they meet.  Leaves pointers and partial
 # distances on the node objects touched by the search. These can be used to quickly construct the path by reconstruct_path()
+# For more information about bidirectional A* search heuristics and stop criteria, see:
+# "A Fast Algorithm for Finding Better Routes by AI Search Techniques", Ikeda et al., 1994
 # Params:
     # start_node - the node at the beginning of the path
     # end_node - the node at the end of the path
     # use_astar - use euclidean distance heuristic to guide the search using A*
     # use_arcflags - if arcflags are pre-computed on the links, search can be drastically improved
-    # max_speed - used for the A* heuristic
+    # max_speed - maximum speed on any link in the graph, used for the A* heuristic
+# Returns:
+    # path - a list of Links on the shortest path, in order
+    # num_expanded - the number of nodes that were expanded during hte search
 def bidirectional_dijkstra(start_node, end_node, use_astar=False, use_arcflags=False, max_speed=1.0):
     #Initialize the priority queue for the forward search from the origin
     forward_pq = PriorityQueue()
@@ -55,7 +69,6 @@ def bidirectional_dijkstra(start_node, end_node, use_astar=False, use_arcflags=F
     best_full_time = float('inf')    
     center_node=None
     
-    i = 0
     #The main loop alternates between forward and backward expansions
     while(not forward_pq.empty() and not backward_pq.empty()):
       
@@ -70,6 +83,7 @@ def bidirectional_dijkstra(start_node, end_node, use_astar=False, use_arcflags=F
             best_full_time = node.backward_time + node.forward_time
             center_node = node
         
+        #If this node was already expanded by the backward search, then the two searches have met each other - we are done
         if(node.was_backward_expanded):
             break
         
@@ -83,7 +97,11 @@ def bidirectional_dijkstra(start_node, end_node, use_astar=False, use_arcflags=F
                 link.connecting_node.forward_time = proposed_cost
                 link.connecting_node.forward_predecessor_link = link
                 
+                #If we are using A*, then the priority is modified with a heuristic function
                 if(use_astar):
+                    #for bidirectional search, we must consider both the forward cost and backward cost, in order to guarantee admissibility
+                    #We take half of their difference as in
+                    # "A Fast Algorithm for Finding Better Routes by AI Search Techniques", Ikeda et al., 1994
                     distance_difference = end_node.approx_dist_to(link.connecting_node) - start_node.approx_dist_to(link.connecting_node)
                     proposed_cost += (distance_difference / max_speed) * (HEURISTIC_DISCOUNT / 2)
                 forward_pq.put((proposed_cost, link.connecting_node))
@@ -100,6 +118,8 @@ def bidirectional_dijkstra(start_node, end_node, use_astar=False, use_arcflags=F
             best_full_time = node.backward_time + node.forward_time
             center_node = node
         
+        #If this node was already expanded by the forward search, then the two searches have met
+        #We are done
         if(node.was_forward_expanded):
             break
             
@@ -115,62 +135,12 @@ def bidirectional_dijkstra(start_node, end_node, use_astar=False, use_arcflags=F
                 link.origin_node.backward_time = proposed_cost
                 link.origin_node.backward_predecessor_link = link
                 
+                #If we are using A*, then the priority is modified with a heuristic function
                 if(use_astar):
                     distance_difference = start_node.approx_dist_to(link.origin_node) - end_node.approx_dist_to(link.origin_node)
                     proposed_cost += (distance_difference / max_speed) * (HEURISTIC_DISCOUNT / 2)
                 backward_pq.put((proposed_cost, link.origin_node))
-    
-        ##### TERMINATION CONDITION #####
-        """
-        (forward_cost, forward_node) = forward_pq.queue[0]
-        (backward_cost, backward_node) = backward_pq.queue[0]
-        if(use_astar and center_node != None):
-            #penalty = (center_node.forward_time + center_node.backward_time) - (start_node.approx_dist_to(end_node) / max_speed) * .9
-            penalty = (center_node.forward_time + center_node.backward_time) - (start_node.approx_dist_to(center_node) / max_speed) * HEURISTIC_DISCOUNT - (end_node.approx_dist_to(center_node) / max_speed) * HEURISTIC_DISCOUNT
-            
-            
-        else:
-            penalty = 0
-        
-        if(forward_node.forward_time + backward_node.backward_time > best_full_time + penalty):
-            break
-            """
-        
-        """
-        if(i%2000 == 0):
-            print"*******************"
-            plt.cla()
-            x_coords1 = [n.long for n in forward_expanded]
-            y_coords1 = [n.lat for n in forward_expanded]
-            x_coords2 = [n.long for n in backward_expanded]
-            y_coords2 = [n.lat for n in backward_expanded]
-            
-            print len(x_coords1)
-            
-            plt.scatter(x_coords1, y_coords1, color="green")
-            plt.scatter(x_coords2, y_coords2, color="red")
-            plt.scatter([start_node.long], [start_node.lat], color="black")
-            plt.scatter([end_node.long], [end_node.lat], color="black")
-            
-            plt.show()
-        
-            
-        i += 1
-        """
-        
-        
-        
-    """
-    #Now, we need to find the center node of the search - the node that has the shortest
-    #forward_time + backward_time.  Note that this may  not necessarily be the node
-    #that caused the search to end.  It may be some other node which was touched by both
-    #searches
-    center_node=None
-    for node in possible_center_nodes:
-        if(center_node == None or node.forward_time + node.backward_time < center_node.forward_time + center_node.backward_time):
-            center_node = node
-    """
-    
+
     if(center_node==None):
         print("Bidirectional search has failed.")
         
@@ -179,6 +149,8 @@ def bidirectional_dijkstra(start_node, end_node, use_astar=False, use_arcflags=F
 # Uses the output from bidirectional_dijkstra() to reconstruct the shortest path
 # Params:
     # center_node - the node where the forward and backward searches met - output by bidirectional_dijkstra()
+# Returns:
+    # path - a list of Links on the shortest path, in order
 def reconstruct_path(center_node):
     #At this point, the forward search and backward search have met at center_node
     #The path consists of two parts
@@ -218,7 +190,17 @@ def cleanup(forward_pq, forward_expanded, backward_pq, backward_expanded):
                 node.reset()
 
 
-
+#A simple one-directional Dijkstra search from start_node to end_node
+#Slower than the bidirectional search, this is mostly needed for testing purposes
+# Params:
+    # start_node - the node at the beginning of the path
+    # end_node - the node at the end of the path
+    # use_astar - use euclidean distance heuristic to guide the search using A*
+    # use_arcflags - if arcflags are pre-computed on the links, search can be drastically improved
+    # max_speed - maximum speed on any link in the graph. used for the A* heuristic
+# Returns:
+    # path - a list of Links on the shortest path, in order
+    # num_expanded - the number of nodes that were expanded during hte search
 def simple_dijkstra(start_node, end_node, use_astar=False, use_arcflags=False, max_speed=1.0):
     #Initialize the priority queue for the forward search from the origin
     forward_pq = PriorityQueue()
@@ -253,7 +235,7 @@ def simple_dijkstra(start_node, end_node, use_astar=False, use_arcflags=False, m
                     
                 forward_pq.put((proposed_cost, link.connecting_node))
                 
-        
+    #Reconstruct the path up to the end node, using the forward_predecessor_links
     path = reconstruct_path(end_node)
         
     cleanup(forward_pq, forward_expanded, None, None)
@@ -263,7 +245,7 @@ def simple_dijkstra(start_node, end_node, use_astar=False, use_arcflags=False, m
 
 ###################### TESTING CODE ###################################
 
-
+# choose a random node on the map
 def choose_random_node(grid_of_nodes):
     l = []    
     
@@ -276,6 +258,7 @@ def choose_random_node(grid_of_nodes):
     i = randint(0, len(l) - 1)
     return l[i]
 
+# Find the maximum speed of any Link in hte graph
 def get_max_speed(grid_of_nodes):
     max_speed = 0.0
     for row in grid_of_nodes:
@@ -288,13 +271,8 @@ def get_max_speed(grid_of_nodes):
     return max_speed
 
 
-def slow_reset(grid_of_nodes):
-    for row in grid_of_nodes:
-        for col in row:
-            for node in col.nodes:
-                node.reset()
 
-
+#Compares two paths, showing where they differ, and their total lengths
 def compare_paths(p1, p2):
     p1_len = 0.0
     p2_len = 0.0
@@ -318,15 +296,11 @@ def compare_paths(p1, p2):
         if i >= len(p1) or i >= len(p2) or p1[i] != p2[i] :
             decorator += " !!!! "
         
-        
-
-
-            
-        #print p1_str + "   |   " + p2_str + decorator
+        print p1_str + "   |   " + p2_str + decorator
     print str(p1_len) + "         |          " + str(p2_len)
     
     
-
+#Randomly generate a bunch of origin,destination pairs from the graph
 def generateSamples(grid_of_nodes, num_samples):
     samples = []
     for x in range(num_samples):
@@ -335,6 +309,7 @@ def generateSamples(grid_of_nodes, num_samples):
         samples.append((orig, dest))
     return samples
 
+#Builds a dictionary that can look up node objects by id number
 def build_nodes_by_id(grid_of_nodes):
     nodes_by_id = {}
     for row in grid_of_nodes:
@@ -344,8 +319,8 @@ def build_nodes_by_id(grid_of_nodes):
     return nodes_by_id
 
 
-
-def bigComparison():
+#runs a bunch of queries between random points with several different methods, and compares the resulst
+def bigComparison(num_trials):
     # Load the map
     print("Loading...")
     grid_of_nodes = get_correct_nodes(20, "speeds_per_hour/0_0", None)
@@ -353,7 +328,7 @@ def bigComparison():
     print("Max speed = " + str(max_speed))
     print("Choosing")
     
-    samples = generateSamples(grid_of_nodes, 20)
+    samples = generateSamples(grid_of_nodes, num_trials)
     
     
     
@@ -410,6 +385,7 @@ def bigComparison():
     print "num mistakes = " + str(num_mistakes)  
 
 
+#Tests a few problematic origin,destination pairs for debugging
 def test_specific_paths():
     print("Loading...")
     grid_of_nodes = get_correct_nodes(20, "speeds_per_hour/0_0", None)
@@ -448,7 +424,8 @@ def test_specific_paths():
         print
         print
 
-
+#Given a list of (origin,destination) pairs, runs all of the shortest path queries
+#use_bidirectional and use_astar control which algorithm will be used
 def run_many_queries(od_list, use_bidirectional, use_astar, max_speed):
     paths = []
     t1 = datetime.now()
@@ -462,7 +439,7 @@ def run_many_queries(od_list, use_bidirectional, use_astar, max_speed):
     return paths, t2-t1
     
             
-
+#Tests the search algorithms on real origin,destination pairs from the taxi data, and compares performance
 def test_with_real_data():
     print("Loading...")
     grid_of_nodes = get_correct_nodes(20, "speeds_per_hour/0_0", None)
@@ -528,7 +505,7 @@ def test_with_real_data():
 
 
 if(__name__ == "__main__"):
-    #bigComparison() 
+    #bigComparison(100) 
     #test_specific_paths()
     test_with_real_data()
 
