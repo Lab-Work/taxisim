@@ -234,6 +234,8 @@ class KDTree(object):
         self.mins = np.amin(self.data,axis=0)
 
         self.tree = self.__build(np.arange(self.n), self.maxes, self.mins)
+        
+        self.region_id = 0
 
     class node(object):
         if sys.version_info[0] >= 3:
@@ -253,9 +255,13 @@ class KDTree(object):
                 return id(self) == id(other)
 
     class leafnode(node):
-        def __init__(self, idx):
+        def __init__(self, idx, region_id):
             self.idx = idx
             self.children = len(idx)
+            self.region_id = region_id
+            
+        def get_leaf_node(self, x):
+            return self
 
     class innernode(node):
         def __init__(self, split_dim, split, less, greater):
@@ -264,10 +270,18 @@ class KDTree(object):
             self.less = less
             self.greater = greater
             self.children = less.children+greater.children
+        
+        def get_leaf_node(self, x):
+            if(x[self.split_dim] < self.split):
+                return self.less.get_leaf_node(x)
+            else:
+                return self.greater.get_leaf_node(x)
 
     def __build(self, idx, maxes, mins):
         if len(idx) <= self.leafsize:
-            return KDTree.leafnode(idx)
+            leaf_node = KDTree.leafnode(idx, self.region_id)
+            self.region_id += 1
+            return leaf_node
         else:
             data = self.data[idx]
             # maxes = np.amax(data,axis=0)
@@ -309,6 +323,9 @@ class KDTree(object):
                     self.__build(idx[less_idx],lessmaxes,mins),
                     self.__build(idx[greater_idx],maxes,greatermins))
 
+    def get_leaf_node(self, x):
+        return self.tree.get_leaf_node(x)
+        
     def __query(self, x, k=1, eps=0, p=2, distance_upper_bound=np.inf):
 
         side_distances = np.maximum(0,np.maximum(x-self.maxes,self.mins-x))
@@ -963,3 +980,41 @@ def distance_matrix(x,y,p=2,threshold=1000000):
             for j in range(n):
                 result[:,j] = minkowski_distance(x,y[j],p)
         return result
+
+
+class TestPoint:
+    x = 0
+    y = 0
+    region_id = 0
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+    
+    def __getitem__(self, key):
+        if key==0:
+            return self.x
+        elif key==1:
+            return self.y
+        else:
+            return None
+    
+    def __len__(self):
+        return 2
+        
+from random import random
+def generate_random_test_points(num_points):
+    points = []
+    for i in range(num_points):
+        points.append(TestPoint(random(), random()))
+        
+
+if __name__ == "__main__":
+    print("Generating points")
+    points = generate_random_test_points(1000)
+    print("Growing tree")
+    kdtree = KDTree(points, leafsize=100)
+    
+    print("Stop. Query Time.")
+    for p in points:
+        distances, neighbors = kdtree.query(p, k=2)
+        print (distances, neighbors)
