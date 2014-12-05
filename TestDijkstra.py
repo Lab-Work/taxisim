@@ -35,8 +35,8 @@ class TestDijkstra:
         # sort the rows and write them to CSV file
         output_table.sort(key=lambda x: x[0])
 
-        outfile = "test_output/forward" + outfile
-        with open(outfile, "w") as f:
+        forward_outfile = "test_output/forward" + outfile
+        with open(forward_outfile, "w") as f:
             w = csv.writer(f)
             sorted_nodes = sorted(boundary_nodes,
                                   key=lambda x: x.boundary_node_id)
@@ -58,8 +58,8 @@ class TestDijkstra:
         # sort the rows and write them to CSV file
         output_table.sort(key=lambda x: x[0])
 
-        outfile = "test_output/backward" + outfile
-        with open(outfile, "w") as f:
+        backward_outfile = "test_output/backward" + outfile
+        with open(backward_outfile, "w") as f:
             w = csv.writer(f)
             sorted_nodes = sorted(boundary_nodes,
                                   key=lambda x: x.boundary_node_id)
