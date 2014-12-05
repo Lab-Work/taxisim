@@ -2,7 +2,9 @@ from Node import *
 from Queue import PriorityQueue
 from random import randint
 from datetime import datetime
+from MITSpeedAlgorithm import find_nodes
 
+from matplotlib import pyplot as plt
 
 HEURISTIC_DISCOUNT = .8
 
@@ -53,9 +55,10 @@ def bidirectional_dijkstra(start_node, end_node, use_astar=False, use_arcflags=F
     best_full_time = float('inf')    
     center_node=None
     
+    i = 0
     #The main loop alternates between forward and backward expansions
     while(not forward_pq.empty() and not backward_pq.empty()):
-        
+      
         #### FORWARD EXPANSION ####
         (cost, node) = forward_pq.get()
         forward_expanded.append(node)
@@ -66,7 +69,9 @@ def bidirectional_dijkstra(start_node, end_node, use_astar=False, use_arcflags=F
         if(node.backward_time + node.forward_time < best_full_time):
             best_full_time = node.backward_time + node.forward_time
             center_node = node
-            
+        
+        if(node.was_backward_expanded):
+            break
         
         #propagate to neighboring nodes
         for link in node.forward_links:
@@ -79,7 +84,8 @@ def bidirectional_dijkstra(start_node, end_node, use_astar=False, use_arcflags=F
                 link.connecting_node.forward_predecessor_link = link
                 
                 if(use_astar):
-                    proposed_cost += (end_node.approx_dist_to(link.connecting_node) / max_speed) * HEURISTIC_DISCOUNT
+                    distance_difference = end_node.approx_dist_to(link.connecting_node) - start_node.approx_dist_to(link.connecting_node)
+                    proposed_cost += (distance_difference / max_speed) * (HEURISTIC_DISCOUNT / 2)
                 forward_pq.put((proposed_cost, link.connecting_node))
                 
         
@@ -93,6 +99,9 @@ def bidirectional_dijkstra(start_node, end_node, use_astar=False, use_arcflags=F
         if(node.backward_time + node.forward_time < best_full_time):
             best_full_time = node.backward_time + node.forward_time
             center_node = node
+        
+        if(node.was_forward_expanded):
+            break
             
         
         #propagate to neighboring nodes
@@ -107,10 +116,12 @@ def bidirectional_dijkstra(start_node, end_node, use_astar=False, use_arcflags=F
                 link.origin_node.backward_predecessor_link = link
                 
                 if(use_astar):
-                    proposed_cost += (start_node.approx_dist_to(link.origin_node) / max_speed) * HEURISTIC_DISCOUNT
+                    distance_difference = start_node.approx_dist_to(link.origin_node) - end_node.approx_dist_to(link.origin_node)
+                    proposed_cost += (distance_difference / max_speed) * (HEURISTIC_DISCOUNT / 2)
                 backward_pq.put((proposed_cost, link.origin_node))
     
         ##### TERMINATION CONDITION #####
+        """
         (forward_cost, forward_node) = forward_pq.queue[0]
         (backward_cost, backward_node) = backward_pq.queue[0]
         if(use_astar and center_node != None):
@@ -123,6 +134,29 @@ def bidirectional_dijkstra(start_node, end_node, use_astar=False, use_arcflags=F
         
         if(forward_node.forward_time + backward_node.backward_time > best_full_time + penalty):
             break
+            """
+        
+        """
+        if(i%2000 == 0):
+            print"*******************"
+            plt.cla()
+            x_coords1 = [n.long for n in forward_expanded]
+            y_coords1 = [n.lat for n in forward_expanded]
+            x_coords2 = [n.long for n in backward_expanded]
+            y_coords2 = [n.lat for n in backward_expanded]
+            
+            print len(x_coords1)
+            
+            plt.scatter(x_coords1, y_coords1, color="green")
+            plt.scatter(x_coords2, y_coords2, color="red")
+            plt.scatter([start_node.long], [start_node.lat], color="black")
+            plt.scatter([end_node.long], [end_node.lat], color="black")
+            
+            plt.show()
+        
+            
+        i += 1
+        """
         
         
         
@@ -190,7 +224,7 @@ def simple_dijkstra(start_node, end_node, use_astar=False, use_arcflags=False, m
     forward_pq = PriorityQueue()
     start_node.forward_time = 0
     forward_pq.put((0,start_node))
-    forward_expanded = set()
+    forward_expanded = []
 
     
     #The main loop alternates between forward and backward expansions
@@ -198,7 +232,7 @@ def simple_dijkstra(start_node, end_node, use_astar=False, use_arcflags=False, m
         
         #FORWARD EXPANSION
         (cost, node) = forward_pq.get()
-        forward_expanded.add(node)
+        forward_expanded.append(node)
         #If this node has already been expanded by the backward search, then we have met in the middle - we are done
         if(node == end_node):
             break
@@ -224,7 +258,7 @@ def simple_dijkstra(start_node, end_node, use_astar=False, use_arcflags=False, m
         
     cleanup(forward_pq, forward_expanded, None, None)
         
-    return path
+    return path, len(forward_expanded)
 
 
 ###################### TESTING CODE ###################################
@@ -319,14 +353,14 @@ def bigComparison():
     print("Max speed = " + str(max_speed))
     print("Choosing")
     
-    samples = generateSamples(grid_of_nodes, 1000)
+    samples = generateSamples(grid_of_nodes, 20)
     
     
     
     correct_paths = []
     t1 = datetime.now()
     for (orig, dest) in samples:
-        path = simple_dijkstra(orig, dest)
+        path, num_expanded = simple_dijkstra(orig, dest)
         correct_paths.append(path)
     t2 = datetime.now()
     print "Single direction: " + str(t2 - t1)    
@@ -335,7 +369,7 @@ def bigComparison():
     num_mistakes = 0
     for i in range(len(samples)):
         (orig, dest) = samples[i]
-        path = simple_dijkstra(orig, dest, use_astar=True, max_speed = max_speed)
+        path, num_expanded = simple_dijkstra(orig, dest, use_astar=True, max_speed = max_speed)
         if(path != correct_paths[i]):
             num_mistakes += 1
             print (orig.node_id, dest.node_id)
@@ -397,10 +431,14 @@ def test_specific_paths():
     for(origin_id, dest_id) in od_pairs:
         print(origin_id, dest_id)
         orig, dest = nodes_by_id[origin_id], nodes_by_id[dest_id]
-        path1 = simple_dijkstra(orig, dest)
+        path1, expanded1 = simple_dijkstra(orig, dest)
+        print("Dijkstra expanded: " + str(expanded1))
         path2, expanded2 =  bidirectional_search(orig, dest)
-        path3 = simple_dijkstra(orig, dest, use_astar=True, max_speed = max_speed)
-        path4, expanded2 = bidirectional_search(orig, dest, use_astar=True, max_speed = max_speed)
+        print("Bidirectional expanded: " + str(expanded2))
+        path3, expanded3 = simple_dijkstra(orig, dest, use_astar=True, max_speed = max_speed)
+        print("A* expanded: " + str(expanded3))
+        path4, expanded4 = bidirectional_search(orig, dest, use_astar=True, max_speed = max_speed)
+        print("Bidirectional A* expanded: " + str(expanded4))
         print path2==path1
         compare_paths(path1, path2)
         print path3==path1
@@ -409,13 +447,89 @@ def test_specific_paths():
         compare_paths(path1, path4)
         print
         print
-        
 
+
+def run_many_queries(od_list, use_bidirectional, use_astar, max_speed):
+    paths = []
+    t1 = datetime.now()
+    for (orig, dest) in od_list:
+        if(use_bidirectional):
+            path, num_expanded = bidirectional_search(orig, dest, use_astar=use_astar, max_speed = max_speed)
+        else:
+            path, num_expanded = simple_dijkstra(orig, dest, use_astar=use_astar, max_speed = max_speed)
+        paths.append(path)
+    t2 = datetime.now()
+    return paths, t2-t1
     
+            
+
+def test_with_real_data():
+    print("Loading...")
+    grid_of_nodes = get_correct_nodes(20, "speeds_per_hour/0_0", None)
+    max_speed = get_max_speed(grid_of_nodes)
+    node_info = get_node_range(grid_of_nodes)
+    print("Max speed = " + str(max_speed))    
+    
+    
+    sample_trips = []
+    with open('sample.csv', 'r') as f:
+        r = csv.reader(f)
+        r.next() #throw out header
+        for line in r:
+            [medallion, hack_license, vendor_id, rate_code, store_and_fwd_flag, pickup_datetime,
+                 dropoff_datetime, passenger_count, trip_time_in_secs, trip_distance,
+                 pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude] = line
+            
+            [pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude] = map(
+                float, [pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude])
+            sample_trips.append([pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude])
+            if(len(sample_trips) >= 10000):
+                break
+    
+    t1 = datetime.now()
+    od_list = []
+    for [pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude] in sample_trips:
+        orig = find_nodes(pickup_longitude, pickup_latitude, grid_of_nodes, node_info, 20)
+        dest = find_nodes(dropoff_longitude, dropoff_latitude, grid_of_nodes, node_info, 20)
+        if(orig!=None and dest != None):
+            od_list.append((orig, dest))
+    t2 = datetime.now()
+    print "Finding " + str(len(od_list)) + " nodes : " + str(t2 - t1)
+    
+    
+    for use_bi in [False, True]:
+        for use_astar in [False, True]:
+            paths, time = run_many_queries(od_list, use_bi, use_astar, max_speed)
+            
+            if(use_bi):
+                out = "BiDirectional "
+            else:
+                out = ""
+                
+            if(use_astar):
+                out += "A* "
+            else:
+                out += "Dijkstra "
+            
+            out += str(time)
+            print out
+            
+            if(not use_bi and not use_astar):
+                ground_truth = paths
+            else:
+                mistakes = 0
+                for i in range(len(paths)):
+                    if(paths[i] != ground_truth[i]):
+                        mistakes += 1
+                print "Mistakes : " + str(mistakes)
+        
+    
+            
 
 
 if(__name__ == "__main__"):
-    bigComparison() 
+    #bigComparison() 
     #test_specific_paths()
+    test_with_real_data()
 
     

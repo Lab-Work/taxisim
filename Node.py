@@ -2,8 +2,24 @@ import csv
 from Link import Link
 from Grid import set_up_grid
 import numpy as np
+from math import sqrt
 
 # TODO: REMOVE THE DUPLICATE STUFF TAKING INTO ACCOUNT NONES
+
+
+def approx_distance(lat1, long1, lat2, long2):
+    diff_lat = float(lat1) - float(lat2)
+    diff_long = float(long1) - float(long2)
+    # meters per degree latitude
+    # an approximation based off our latitude and longitude
+    lat_miles = diff_lat * 111194.86461
+    # meters per degree longitude
+    # an approximation  based off our latitude and longitude
+    long_miles = diff_long * 84253.1418965
+    return sqrt(lat_miles * lat_miles + long_miles * long_miles)
+
+
+
 
 
 # A vertex in our map
@@ -16,16 +32,11 @@ class Node:
         self.long = float(longitude)
         self.region = int(region)
 
-        # Used during the route calculator
-        #   -> this keeps track of the node previous to this one in a path
-        # i.e. If the path was A->C->B->D, B.came_from == C
-        self.came_from = None
 
         # Used for DFS
         self.discovered = False
 
-        # Keeps track of how far away we are from the start_node
-        self.best_time = float("INF")
+
 
         # These are nodes that are connected by edges that start at the current
         # node and their weights
@@ -58,9 +69,17 @@ class Node:
         self.time_snapshot = np.array([])
 
         # For each boundary node path, shows where this particular node came
-        # from
+        # from - used in ArcFlags Preprocessing
         self.forward_predecessors = np.array([])
         self.backward_predecessors = np.array([])
+        
+        
+        ######################################################
+        #  Used at query time                                #
+        ######################################################        
+        
+        self.reset()
+        
 
         # Checks if the node is currently in the queue (won't add otherwise)
         # self.in_queue = False
@@ -71,6 +90,20 @@ class Node:
 
         # Identifies which region this node belongs to
         self.region_id = (None, None)
+    
+    def reset(self):
+        self.forward_predecessor_link = None #For the forward search
+        self.backward_predecessor_link = None #For the backward search
+        
+        #Shows how far this node is from the origin and destination
+        self.forward_time = float('Inf') #Time from the origin (forward search)
+        self.backward_time = float('Inf') #Time to the destination (backward search)
+        
+        self.was_forward_expanded=False
+        self.was_backward_expanded=False
+
+    def approx_dist_to(self, other_node):
+        return approx_distance(self.lat, self.long, other_node.lat, other_node.long)
 
     # Given an node_id, gives its weight
     def add_connecting_node(self, node_id, weight, speed, time):
