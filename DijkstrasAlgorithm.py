@@ -267,15 +267,11 @@ class DijkstrasAlgorithm:
         # initially either INF(infinity) or 0
         DijkstrasAlgorithm.initialize_nodes(boundary_nodes, grid_of_nodes)
 
-        print
+        print "processing forward graph"
         DijkstrasAlgorithm.directed_dijkstra(boundary_nodes, grid_of_nodes,
                                              warm_start, use_domination_value,
                                              on_forward_graph=True)
-        DijkstrasAlgorithm.reset_nodes(grid_of_nodes)
-        DijkstrasAlgorithm.init_boundary_node_ids(boundary_nodes)
-        DijkstrasAlgorithm.initialize_nodes(boundary_nodes, grid_of_nodes)
-
-        print
+        print "processing backward graph"
         DijkstrasAlgorithm.directed_dijkstra(boundary_nodes, grid_of_nodes,
                                              warm_start, use_domination_value,
                                              on_forward_graph=False)
@@ -292,18 +288,30 @@ class DijkstrasAlgorithm:
         # initially either INF(infinity) or 0
         DijkstrasAlgorithm.initialize_nodes(boundary_nodes, grid_of_nodes)
 
-        total_expanded = 0
-        overall_max_pq_size = 0
+        forward_total_expanded = 0
+        forward_overall_max_pq_size = 0
+        backward_total_expanded = 0
+        backward_overall_max_pq_size = 0
         for boundary_node in boundary_nodes:
-            _, num_expanded, max_pq_size = aborted_dijkstra(
-                boundary_node, None, on_forward_graph=True)
-            total_expanded += num_expanded
-            overall_max_pq_size = max(overall_max_pq_size, max_pq_size)
+            _, forward_num_expanded, forward_max_pq_size = aborted_dijkstra(
+                boundary_node, None, this_region_only=False,
+                on_forward_graph=True)
+            _, backward_num_expanded, backward_max_pq_size = aborted_dijkstra(
+                boundary_node, None, this_region_only=False,
+                on_forward_graph=False)
+            forward_total_expanded += forward_num_expanded
+            forward_overall_max_pq_size = max(forward_overall_max_pq_size,
+                                              forward_max_pq_size)
+            backward_total_expanded += backward_num_expanded
+            backward_overall_max_pq_size = max(backward_overall_max_pq_size,
+                                               backward_max_pq_size)
 
-        print("Max Queue Size:", overall_max_pq_size)  # debug
-        print("Number of expansions:", total_expanded)  # debug
+        max_pq = max(forward_overall_max_pq_size, backward_overall_max_pq_size)
+        max_expand = max(forward_total_expanded, backward_total_expanded)
+        print("Max Queue Size:", max_pq)  # debug
+        print("Number of expansions:", max_expand)  # debug
 
-        return total_expanded, overall_max_pq_size
+        return max_expand, max_pq
 
     # Given where the nodes came from, rebuilds the path that was taken to the
     # final node

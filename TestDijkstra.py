@@ -23,7 +23,7 @@ class TestDijkstra:
         # outfile - the name of the file to save the results in
     @staticmethod
     def output_labels(grid_of_nodes, boundary_nodes, outfile):
-        print "outputting"
+        print "outputting forward graph"
         # create one row for each node
         output_table = []
         for column in grid_of_nodes:
@@ -34,7 +34,32 @@ class TestDijkstra:
 
         # sort the rows and write them to CSV file
         output_table.sort(key=lambda x: x[0])
-        with open(outfile, "w") as f:
+
+        forward_outfile = "test_output/forward" + outfile
+        with open(forward_outfile, "w") as f:
+            w = csv.writer(f)
+            sorted_nodes = sorted(boundary_nodes,
+                                  key=lambda x: x.boundary_node_id)
+            node_ids = [n.node_id for n in sorted_nodes]
+            w.writerow(["Node"] + node_ids)
+
+            for row in output_table:
+                w.writerow(row)
+
+        print "outputting backward graph"
+        # create one row for each node
+        output_table = []
+        for column in grid_of_nodes:
+            for grid_region in column:
+                for node in grid_region.nodes:
+                    output_table.append([node.node_id] +
+                                        list(node.backward_boundary_time))
+
+        # sort the rows and write them to CSV file
+        output_table.sort(key=lambda x: x[0])
+
+        backward_outfile = "test_output/backward" + outfile
+        with open(backward_outfile, "w") as f:
             w = csv.writer(f)
             sorted_nodes = sorted(boundary_nodes,
                                   key=lambda x: x.boundary_node_id)
@@ -95,15 +120,15 @@ if __name__ == '__main__':
         print ("================================== PROCESSING REGION " +
                str((i, j)) + " =================================")
         print
-        # print("---------Independent")
-        # TestDijkstra.runIndependently(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_independent.csv")
+        print("---------Independent")
+        TestDijkstra.runIndependently(grid_of_nodes, i, j, "nodes_" + str(i) + "_" + str(j) + "_independent.csv")
         # print("---------Minkey Cold")
-        # TestDijkstra.run(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_minkey_coldstart.csv", False, False)
+        # TestDijkstra.run(grid_of_nodes, i, j, "nodes_" + str(i) + "_" + str(j) + "_minkey_coldstart.csv", False, False)
         print("---------Minkey Warm")
-        TestDijkstra.run(grid_of_nodes, i, j, "test_output/nodes_" + str(i) +
+        TestDijkstra.run(grid_of_nodes, i, j, "nodes_" + str(i) +
                          "_" + str(j) + "_minkey_warmstart.csv", True, False)
         # print("---------Domkey Cold")
-        # TestDijkstra.run(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_domkey_coldstart.csv", False, True)
+        # TestDijkstra.run(grid_of_nodes, i, j, "nodes_" + str(i) + "_" + str(j) + "_domkey_coldstart.csv", False, True)
         # print("---------Domkey Warm")
-        # TestDijkstra.run(grid_of_nodes, i, j, "test_output/nodes_" + str(i) + "_" + str(j) + "_domkey_warmstart.csv", True, True)
+        # TestDijkstra.run(grid_of_nodes, i, j, "nodes_" + str(i) + "_" + str(j) + "_domkey_warmstart.csv", True, True)
 
