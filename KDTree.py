@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-A KD-Tree, which can be used on any objects with a .location attribute
+A KD-Tree, which can be used on any array-like objects
+i.e. objects that implement __getitem__() and __len__()
 This can be used to quickly perform nearest neighbor queries, and partition data
 points into rectangles with roughly the same number of points in each region.
 Created on Fri Dec  5 16:30:53 2014
@@ -8,17 +9,6 @@ Created on Fri Dec  5 16:30:53 2014
 @author: brian
 """
 from itertools import imap
-
-# Compures the squared euclidean distance between two objects
-# It is assummed that these objects have a .location attribute, which is a list
-# representing its coordinates in K-dimensional euclidean space
-# Params:
-    # p1 - The first object, which has a .location 
-    # p2 - The second object, same deal
-def squared_dist(p1, p2):
-    diff = imap(float.__sub__, p1.location, p2.location)
-    return sum(map(lambda x: x*x, diff))
-    
 
 
 # A KD-Tree which supports nearest-neighbor lookup.  It also has a get_leaf() function
@@ -35,28 +25,26 @@ class KDTree:
     #Initializes the kd-tree with some data.  Will recursively grow children trees
     #If there is too much data
     #Params:
-        # data - A list of objects, each which have a .location parameter
+        # data - A list of objects, which must implement __getitem__() and __len__()
         # split_dim - which dimension should we split on (the children will split on the next dimension and so on)
         # leaf_size - stop splitting when a child has less than this many data points
     def __init__(self, data, split_dim=0, leaf_size=100):
-        self.num_dimensions = len(data[0].location)
         
-        if(len(data) < leaf_size):
+        
+        if(len(data) <= leaf_size):
             #Not enough data - this tree is a leaf node
             self.data = data
         else:
-            #Lots of data - split it into two groups and recursively grow subtrees
-            self.split_dim = split_dim            
-
+            num_dimensions = len(data[0])
             # Identify the median as the split point
             # TODO: This is currently done the "easy way".
             # A linear time algorithm or simpler criteria could be used
-            data.sort(key = lambda x: x.location[split_dim])            
+            data.sort(key = lambda x: x[split_dim])            
             mid = len(data) / 2
-            self.split_val = data[mid].location[split_dim]
+            self.split_val = data[mid][split_dim]
             
             #Child trees will split on the next dimension (cycle after running out)
-            next_dim = (self.split_dim + 1) % self.num_dimensions
+            next_dim = (self.split_dim + 1) % num_dimensions
             
             #Recursively grow children
             self.low_child = KDTree(data[:mid], next_dim, leaf_size)
@@ -65,7 +53,7 @@ class KDTree:
     
     # Returns the leaf node that a query point is geometricaly in
     # Params:
-        # point - any object with a .location attribute.  Not necessarily a point used to grow the tree
+        # point - any array-like object.  Not necessarily a point used to grow the tree
     # Returns:
         # A KDTree object, which represents the leaf node.
     def get_leaf(self, point):
@@ -74,7 +62,7 @@ class KDTree:
             return self
         
         #This is not a leaf - figure out which child contains the point
-        point_val = point.location[self.split_dim]
+        point_val = point[self.split_dim]
         
         #Recursively call that child
         if(point_val < self.split_val):
@@ -84,7 +72,7 @@ class KDTree:
     
     # Finds the data point in the KDTree which is nearest to a query point
     # Params:
-        # point - The query point, any object with a .location attribute.
+        # point - The query point, any array-like object
         # max_squared_dist - An upper bound on the (squared) neighbor distance.
         #   Subtrees That are further away than this will not be explored
     # Returns:
@@ -96,17 +84,23 @@ class KDTree:
             best_squared_dist = max_squared_dist
             best_point = None
             for d in self.data:
-                dist = squared_dist(point, d)
+                #dist = squared_dist(point, d)
+                diff = imap(float.__sub__, point, d)
+                dist = sum(map(lambda x: x*x, diff))                
+                
+                
+                
                 if(dist < best_squared_dist):
                     best_squared_dist = dist
                     best_point = d
+            self.calls = 1
             return best_point, best_squared_dist
         
         
         #This is an internal node.  Determine which branch the point is in (close branch)
         #And which one it is not (far branch).  The nearest neighbor is probably in the close
         #branch, but there is a possibility that it is in the far branch
-        point_val = point.location[self.split_dim]
+        point_val = point[self.split_dim]
         
         if(point_val < self.split_val):
             close_branch = self.low_child
@@ -117,10 +111,11 @@ class KDTree:
         
         #First search the close branch for the nearest neighbor and its distance
         best_point, best_squared_dist = close_branch.nearest_neighbor_query(point, max_squared_dist)
+        self.calls = close_branch.calls + 1
         
         #If the query point is close to the border, the nearest neighbor might still be in the far branch
         #However, if the border is farther away than the best match so far, there is no need to search it
-        border_dist = (self.split_val - point.location[self.split_dim])**2
+        border_dist = (self.split_val - point[self.split_dim])**2
         if(border_dist < best_squared_dist):
             candidate_point, candidate_squared_dist = far_branch.nearest_neighbor_query(point, best_squared_dist)
             
@@ -128,6 +123,8 @@ class KDTree:
             if(candidate_squared_dist < best_squared_dist):
                 best_point = candidate_point
                 best_squared_dist = candidate_squared_dist
+            
+            self.calls += far_branch.calls
         
         #Return the best match that we have found so far
         return best_point, best_squared_dist
@@ -138,7 +135,8 @@ def brute_force_nearest_neighbor(points, query_point):
     best_point = None
     best_dist = float('inf')
     for p in points:
-        dist = squared_dist(p, query_point)
+        diff = imap(float.__sub__, p, query_point)
+        dist = sum(map(lambda x: x*x, diff)) 
         if(dist < best_dist):
             best_dist = dist
             best_point = p
@@ -149,6 +147,10 @@ class TestPoint:
     region_id = 0
     def __init__(self, x, y):
         self.location = [x,y]
+    def __getitem__(self, x):
+        return self.location[x]
+    def __len__(self):
+        return len(self.location)
 
 
 

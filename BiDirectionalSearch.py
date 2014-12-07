@@ -1,4 +1,5 @@
 from Node import *
+from Map import Map
 from Queue import PriorityQueue
 from random import randint
 from datetime import datetime
@@ -442,12 +443,13 @@ def run_many_queries(od_list, use_bidirectional, use_astar, max_speed):
 #Tests the search algorithms on real origin,destination pairs from the taxi data, and compares performance
 def test_with_real_data():
     print("Loading...")
-    grid_of_nodes = get_correct_nodes(20, "speeds_per_hour/0_0", None)
-    max_speed = get_max_speed(grid_of_nodes)
-    node_info = get_node_range(grid_of_nodes)
+    
+    nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv")
+    max_speed = nyc_map.get_max_speed()
+    
     print("Max speed = " + str(max_speed))    
     
-    
+    print("Reading file")
     sample_trips = []
     with open('sample.csv', 'r') as f:
         r = csv.reader(f)
@@ -460,14 +462,20 @@ def test_with_real_data():
             [pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude] = map(
                 float, [pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude])
             sample_trips.append([pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude])
-            if(len(sample_trips) >= 10000):
+            if(len(sample_trips) >= 1000):
                 break
     
+    print("Matching nodes.")
     t1 = datetime.now()
     od_list = []
     for [pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude] in sample_trips:
-        orig = find_nodes(pickup_longitude, pickup_latitude, grid_of_nodes, node_info, 20)
-        dest = find_nodes(dropoff_longitude, dropoff_latitude, grid_of_nodes, node_info, 20)
+        
+        orig = nyc_map.get_nearest_node(pickup_latitude, pickup_longitude)
+        #print "calls : " + str(nyc_map.lookup_kd_tree.calls)
+        dest = nyc_map.get_nearest_node(dropoff_latitude, dropoff_longitude)
+        #print "calls : " + str(nyc_map.lookup_kd_tree.calls)
+        #orig = find_nodes(pickup_longitude, pickup_latitude, grid_of_nodes, node_info, 20)
+        #dest = find_nodes(dropoff_longitude, dropoff_latitude, grid_of_nodes, node_info, 20)
         if(orig!=None and dest != None):
             od_list.append((orig, dest))
     t2 = datetime.now()

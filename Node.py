@@ -30,6 +30,9 @@ class Node:
         self.node_id = node_id
         self.lat = float(latitude)
         self.long = float(longitude)
+        
+        #Convert lat and lon to coordinates in meters (we are assumming that NYC is flat)
+        self.location = (self.lat*111194.86461, self.long*84253.1418965)
         self.region = int(region)
 
 
@@ -90,6 +93,14 @@ class Node:
 
         # Identifies which region this node belongs to
         self.region_id = (None, None)
+    
+    #Used for the KD-tree - the node can be used as an array-like object
+    def __getitem__(self, x):
+        return self.location[x]
+    
+    #Used for the KD-Tree - the node can be used as an array-like object
+    def __len__(self):
+        return 2
     
     def reset(self):
         self.forward_predecessor_link = None #For the forward search
