@@ -30,7 +30,7 @@ class KDTree:
         # leaf_size - stop splitting when a child has less than this many data points
     def __init__(self, data, split_dim=0, leaf_size=100):
         
-        
+        self.split_dim = split_dim
         if(len(data) <= leaf_size):
             #Not enough data - this tree is a leaf node
             self.data = data
@@ -58,7 +58,7 @@ class KDTree:
         # A KDTree object, which represents the leaf node.
     def get_leaf(self, point):
         #This is a leaf
-        if(self.data != None):
+        if(self.low_child==None and self.hi_child==None):
             return self
         
         #This is not a leaf - figure out which child contains the point
@@ -128,6 +128,12 @@ class KDTree:
         
         #Return the best match that we have found so far
         return best_point, best_squared_dist
+    
+    def get_height(self):
+        if(self.low_child==None and self.hi_child==None):
+            return 1
+        else:
+            return min(self.low_child.get_height(), self.hi_child.get_height()) + 1
 
 # For testing purposes - finds the nearest neighbor to a query point brute force style
 # It should return the same value as KDTree.nearest_neighbor_query() but slower

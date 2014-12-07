@@ -39,9 +39,26 @@ class Map:
         # point - an array-like that contains coordinates (like a Node or tuple)
     # Returns: The region, which is a leaf node of the region_kd_tree
     def get_region(self, point):
-        return self.region_kd_tree.nearest_neighbor_query(point)
+        return self.region_kd_tree.get_leaf(point)
     
+    
+    #Assigns integer region_id numbers to every node in the graph
+    #Regions are based on the rectangular leaf nodes of the region_kd_tree
+    def assign_node_regions(self):
+        print ("Region tree depth " + str(self.region_kd_tree.get_height()))
+        region_id_lookup = {}
+        next_region_id = 0
+        
+        for node in self.nodes:
+            region = self.get_region(node)
 
+            if(region not in region_id_lookup):
+                region_id_lookup[region] = next_region_id
+                next_region_id += 1
+            
+            node.region_id = region_id_lookup[region]
+        
+        print "total regions : " +str(next_region_id)
             
     #Finds the maximum speed of any link in the graph
     def get_max_speed(self):
@@ -56,7 +73,7 @@ class Map:
         # links_fn - the name of the CSV file containing Link info
         # lookup_id_size - the leaf_size for the Node lookup kd tree.  Should be small for fastest performance
         # region_id_size - the leaf_size for the region kd tree.  Should be large
-    def __init__(self, nodes_fn, links_fn, lookup_kd_size = 2, region_kd_size = 1000):
+    def __init__(self, nodes_fn, links_fn, lookup_kd_size = 1, region_kd_size = 1000):
         self.nodes = [] # A list of all Nodes
         self.nodes_by_id = {} # Maps integer node_ids to Node objects
         self.links = [] # A list of all Links
@@ -158,6 +175,25 @@ def benchmark_node_lookup():
         
         print "leaf_size=" + str(leaf_size) + "   build time: " + str(d2 - d1) + "   query time: " + str(d3 - d2)
 
+#Tests the Map.assign_node_regions() method by looking at a few nodes and their linked neighbors
+#Most of them should have the same region_id
+def test_region_ids():
+    from random import randint
+    print("Loading")
+    nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv")
+    
+    print("Assigning node regions")
+    nyc_map.assign_node_regions()
+    for i in range(20):
+        j = randint(0, len(nyc_map.nodes) - 1)
+        node = nyc_map.nodes[j]
+        print node.region_id
+        for link in node.forward_links:
+            print "---" + str(link.connecting_node.region_id)
+        for link in node.backward_links:
+            print "===" + str(link.origin_node.region_id)
+        print
 
 if(__name__=="__main__"):
-    benchmark_node_lookup()
+    #benchmark_node_lookup()
+    test_region_ids()
