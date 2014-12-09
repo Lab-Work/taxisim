@@ -19,9 +19,6 @@ def approx_distance(lat1, long1, lat2, long2):
     return sqrt(lat_miles * lat_miles + long_miles * long_miles)
 
 
-
-
-
 # A vertex in our map
 # (edge class not used -> simply used lists within the node)
 class Node:
@@ -30,16 +27,14 @@ class Node:
         self.node_id = node_id
         self.lat = float(latitude)
         self.long = float(longitude)
-        
-        #Convert lat and lon to coordinates in meters (we are assumming that NYC is flat)
-        self.location = (self.lat*111194.86461, self.long*84253.1418965)
-        self.region = int(region)
 
+        # Convert lat and lon to coordinates in meters (we are assumming that
+        # NYC is flat)
+        self.location = (self.lat * 111194.86461, self.long * 84253.1418965)
+        self.region = int(region)
 
         # Used for DFS
         self.discovered = False
-
-
 
         # These are nodes that are connected by edges that start at the current
         # node and their weights
@@ -75,14 +70,12 @@ class Node:
         # from - used in ArcFlags Preprocessing
         self.forward_predecessors = np.array([])
         self.backward_predecessors = np.array([])
-        
-        
+
         ######################################################
         #  Used at query time                                #
-        ######################################################        
-        
+        ######################################################
+
         self.reset()
-        
 
         # Checks if the node is currently in the queue (won't add otherwise)
         # self.in_queue = False
@@ -93,28 +86,34 @@ class Node:
 
         # Identifies which region this node belongs to
         self.region_id = (None, None)
-    
-    #Used for the KD-tree - the node can be used as an array-like object
+
+    # Used for the KD-tree - the node can be used as an array-like object
     def __getitem__(self, x):
         return self.location[x]
-    
-    #Used for the KD-Tree - the node can be used as an array-like object
+
+    # Used for the KD-Tree - the node can be used as an array-like object
     def __len__(self):
         return 2
-    
+
     def reset(self):
-        self.forward_predecessor_link = None #For the forward search
-        self.backward_predecessor_link = None #For the backward search
-        
-        #Shows how far this node is from the origin and destination
-        self.forward_time = float('Inf') #Time from the origin (forward search)
-        self.backward_time = float('Inf') #Time to the destination (backward search)
-        
-        self.was_forward_expanded=False
-        self.was_backward_expanded=False
+        self.forward_predecessor_link = None  # For the forward search
+        self.backward_predecessor_link = None  # For the backward search
+
+        # Shows how far this node is from the origin and destination
+        # Time from the origin (forward search)
+        self.forward_time = float('Inf')
+        # Time to the destination (backward search)
+        self.backward_time = float('Inf')
+
+        self.was_forward_expanded = False
+        self.was_backward_expanded = False
 
     def approx_dist_to(self, other_node):
-        return approx_distance(self.lat, self.long, other_node.lat, other_node.long)
+        return approx_distance(
+            self.lat,
+            self.long,
+            other_node.lat,
+            other_node.long)
 
     # Given an node_id, gives its weight
     def add_connecting_node(self, node_id, weight, speed, time):

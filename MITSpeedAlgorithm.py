@@ -2,7 +2,6 @@ import csv
 import timeit
 from datetime import datetime
 from Node import get_correct_nodes, get_node_range, approx_distance
-#import AStar
 import Trip
 
 ##########################################
@@ -50,7 +49,8 @@ def find_nodes(longitude, latitude, grid_of_nodes, node_info, n):
                 break
             grid_region = grid_of_nodes[i + n][j + m]
             for node in grid_region.nodes:
-                curr_dist = approx_distance(latitude, longitude, node.lat, node.long)
+                curr_dist = approx_distance(latitude, longitude, node.lat,
+                                            node.long)
                 if curr_dist < best_distance:
                     best_node = node
                     best_distance = curr_dist

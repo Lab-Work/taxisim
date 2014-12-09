@@ -6,7 +6,11 @@ from GraphLib import distance
 
 
 def heuristic(node, end_node, max_speed):
-    return distance(node.lat, node.long, end_node.lat, end_node.long)/max_speed
+    return distance(
+        node.lat,
+        node.long,
+        end_node.lat,
+        end_node.long) / max_speed
 
 
 # Finds if a Trip's data is out of bounds of our node data
@@ -112,7 +116,8 @@ def find_shortest_path(start_node, end_node, max_speed):
         for connected_link in curr_node.forward_links:
             connected_node = connected_link.connecting_node
             # THE ARCFLAGS PORTION
-            if curr_node.is_forward_arc_flags[connected_node][end_node.region] == 0:
+            if curr_node.is_forward_arc_flags[
+                    connected_node][end_node.region] == 0:
                 if curr_node.region != end_node.region:
                     continue
 

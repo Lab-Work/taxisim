@@ -29,9 +29,9 @@ def find_nodes(longitude, latitude, grid_of_nodes, node_info, n):
     # Node closest to coords and its distance
     best_node = None
     best_distance = 1000000
-    i = int(float(longitude - node_info[3]) * 
+    i = int(float(longitude - node_info[3]) *
             (n / float(node_info[2] - node_info[3])))
-    j = int(float(latitude - node_info[1]) * 
+    j = int(float(latitude - node_info[1]) *
             (n / float(node_info[0] - node_info[1])))
 
     # You have to check the surrounding area (if a coordinate is really close
@@ -131,7 +131,7 @@ def find_shortest_path(start_node, end_node, max_speed):
                 connected_node.came_from = curr_node
                 connected_node.best_time = tentative_best
                 nodes_to_search.put(
-                    (heuristic(connected_node, end_node, max_speed) + 
+                    (heuristic(connected_node, end_node, max_speed) +
                         connected_node.best_time,
                         connected_node))
                 nodes_to_search2.add(connected_node)

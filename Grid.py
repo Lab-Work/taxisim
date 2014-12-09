@@ -8,15 +8,14 @@ class GridRegion:
         self.left = left_bound
         self.right = right_bound
         self.nodes = set()
-    
-    #Gets all of the boundary nodes in this region
+
+    # Gets all of the boundary nodes in this region
     def get_boundary_nodes(self):
         boundary_nodes = []
         for node in self.nodes:
             if node.is_boundary_node:
                 boundary_nodes.append(node)
         return boundary_nodes
-        
 
 
 # Given an overall area and how many regions you want
@@ -26,8 +25,8 @@ class GridRegion:
 def set_up_grid(upmost, downmost, rightmost, leftmost, num_divisions, nodes):
     grid = []
     # The height and width of each grid region
-    change_in_lat = (upmost - downmost)/float(num_divisions)
-    change_in_long = (rightmost - leftmost)/float(num_divisions)
+    change_in_lat = (upmost - downmost) / float(num_divisions)
+    change_in_long = (rightmost - leftmost) / float(num_divisions)
     curr_left = leftmost
     # Left-Right
     for i in range(num_divisions):
@@ -50,8 +49,8 @@ def set_up_grid(upmost, downmost, rightmost, leftmost, num_divisions, nodes):
         i = int(float(node.long - leftmost) / float(change_in_long))
         j = int(float(node.lat - downmost) / float(change_in_lat))
         grid[i][j].nodes.add(node)
-        
-        #Also store the region mapping on the node object
-        node.region_id = (i,j)
-        
+
+        # Also store the region mapping on the node object
+        node.region_id = (i, j)
+
     return grid
