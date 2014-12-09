@@ -1,6 +1,6 @@
 import Queue
 from AbortedDijkstra import aborted_dijkstra
-
+from Map import Map
 import numpy as np
 
 
@@ -19,7 +19,7 @@ class DijkstrasAlgorithm:
 
     # Sets up lists of "INF" for each nodes, excluding boundary nodes
     @staticmethod
-    def initialize_nodes(boundary_nodes_list, grid_of_nodes):
+    def initialize_nodes(boundary_nodes_list, nyc_map):
         if not boundary_nodes_list:
             return
         tmp_node = None
@@ -28,37 +28,35 @@ class DijkstrasAlgorithm:
             break
         this_region_id = tmp_node.region_id
 
-        for column in grid_of_nodes:
-            for region in column:
-                for node in region.nodes:
-                    # Each node needs a distance from each boundary node
-                    # all starting at infinity
-                    node.forward_boundary_time = np.repeat(
-                        float("INF"), len(boundary_nodes_list))
-                    node.backward_boundary_time = np.repeat(
-                        float("INF"), len(boundary_nodes_list))
+        for node in nyc_map.nodes:
+            # Each node needs a distance from each boundary node
+            # all starting at infinity
+            node.forward_boundary_time = np.repeat(
+                float("INF"), len(boundary_nodes_list))
+            node.backward_boundary_time = np.repeat(
+                float("INF"), len(boundary_nodes_list))
 
-                    if node.is_boundary_node and (
-                            node.region_id == this_region_id):
-                        # All boundary nodes in this region are 0 distance away
-                        # from themselves
-                        index = node.boundary_node_id
-                        node.forward_boundary_time[index] = 0
-                        node.backward_boundary_time[index] = 0
+            if node.is_boundary_node and (
+                    node.region_id == this_region_id):
+                # All boundary nodes in this region are 0 distance away
+                # from themselves
+                index = node.boundary_node_id
+                node.forward_boundary_time[index] = 0
+                node.backward_boundary_time[index] = 0
 
-                    # Store a deep copy snapshot of forward_boundary_time for
-                    # future comparison
-                    # node.time_snapshot = np.copy(node.forward_boundary_time)
-                    node.forward_predecessors = (
-                        np.array([None] * len(boundary_nodes_list)))
-                    node.backward_predecessors = (
-                        np.array([None] * len(boundary_nodes_list)))
+            # Store a deep copy snapshot of forward_boundary_time for
+            # future comparison
+            # node.time_snapshot = np.copy(node.forward_boundary_time)
+            node.forward_predecessors = (
+                np.array([None] * len(boundary_nodes_list)))
+            node.backward_predecessors = (
+                np.array([None] * len(boundary_nodes_list)))
 
     # Computes the shortest path between all pairs of boundary nodes
     # If this node_id done before the main bidirectional_dijkstra() search,
     # performance should be much better
     @staticmethod
-    def initialize_boundary_nodes(boundary_nodes_list, grid_of_nodes,
+    def initialize_boundary_nodes(boundary_nodes_list, nyc_map,
                                   this_region_only, on_forward_graph):
 
         visited_nodes = set()
@@ -74,48 +72,30 @@ class DijkstrasAlgorithm:
         #              boundary_node.forward_boundary_time)
         return visited_nodes
 
-    """
-    # Keeps a dictionary of how far away a given node is away from a given
-    # boundary node
-    @staticmethod
-    def distance_dictionary(boundary_indices, boundary_nodes, grid_of_nodes):
-        dist_dict = dict()
-        for boundnode in boundary_nodes:
-            index = boundary_indices[boundnode]
-            for column in grid_of_nodes:
-                for region in column:
-                    for node in region.nodes:
-                        dist_dict[(boundnode.node_id, node.node_id)] = (
-                            node.forward_boundary_time[index])
-        return dist_dict
-    """
-
     # Every node in array nodes gets reset so it has no distance from anything,
     # no time from anything, and came from nothing (used to reset after making
     # the path)
     @staticmethod
-    def reset_nodes(grid_of_nodes):
-        for col in grid_of_nodes:
-            for cell in col:
-                for node in cell.nodes:
-                    if node is not None:
-                        # For multi-origin bidirectional dijkstra, storing the
-                        # time from each boundary node
-                        node.forward_boundary_time = np.array([])
-                        node.backward_boundary_time = np.array([])
+    def reset_nodes(nyc_map):
+        for node in nyc_map.nodes:
+            if node is not None:
+                # For multi-origin bidirectional dijkstra, storing the
+                # time from each boundary node
+                node.forward_boundary_time = np.array([])
+                node.backward_boundary_time = np.array([])
 
-                        # A snapshot of the forward_boundary_time from the
-                        # last expansion
-                        # node.time_snapshot = np.array([])
+                # A snapshot of the forward_boundary_time from the
+                # last expansion
+                # node.time_snapshot = np.array([])
 
-                        # For each boundary node path, shows where this
-                        # particular node came
-                        # from
-                        node.forward_predecessors = np.array([])
-                        node.backward_predecessors = np.array([])
+                # For each boundary node path, shows where this
+                # particular node came
+                # from
+                node.forward_predecessors = np.array([])
+                node.backward_predecessors = np.array([])
 
     @staticmethod
-    def directed_dijkstra(boundary_nodes, grid_of_nodes, warm_start,
+    def directed_dijkstra(boundary_nodes, nyc_map, warm_start,
                           use_domination_value, on_forward_graph):
         if on_forward_graph:
             print("---Computing on the forward graph---")
@@ -130,7 +110,7 @@ class DijkstrasAlgorithm:
         if warm_start:
             print("Warmstarting...")
             touched_nodes = DijkstrasAlgorithm.initialize_boundary_nodes(
-                boundary_nodes, grid_of_nodes, False, on_forward_graph)
+                boundary_nodes, nyc_map, False, on_forward_graph)
         else:
             touched_nodes = boundary_nodes
 
@@ -248,7 +228,7 @@ class DijkstrasAlgorithm:
                         # the actual node itself
                         connected_node))
 
-        DijkstrasAlgorithm.set_arc_flags(grid_of_nodes)
+        DijkstrasAlgorithm.set_arc_flags(nyc_map)
 
         print("Max Queue Size: " + str(max_queue_size))  # debug
         print("Number of expansions: " + str(expansion_count))  # debug
@@ -256,7 +236,7 @@ class DijkstrasAlgorithm:
     # Basically creates a tree rooted at the boundary node where every edge in
     # the tree is an arcflag
     @staticmethod
-    def bidirectional_dijkstra(boundary_nodes, grid_of_nodes, warm_start,
+    def bidirectional_dijkstra(boundary_nodes, nyc_map, warm_start,
                                use_domination_value):
 
         # Assign sequential IDs to the boundary nodes of this region
@@ -265,28 +245,28 @@ class DijkstrasAlgorithm:
         print("Initializing...")
         # Gives each node a distance from the boundary nodes, which are
         # initially either INF(infinity) or 0
-        DijkstrasAlgorithm.initialize_nodes(boundary_nodes, grid_of_nodes)
+        DijkstrasAlgorithm.initialize_nodes(boundary_nodes, nyc_map)
 
         print "processing forward graph"
-        DijkstrasAlgorithm.directed_dijkstra(boundary_nodes, grid_of_nodes,
+        DijkstrasAlgorithm.directed_dijkstra(boundary_nodes, nyc_map,
                                              warm_start, use_domination_value,
                                              on_forward_graph=True)
         print "processing backward graph"
-        DijkstrasAlgorithm.directed_dijkstra(boundary_nodes, grid_of_nodes,
+        DijkstrasAlgorithm.directed_dijkstra(boundary_nodes, nyc_map,
                                              warm_start, use_domination_value,
                                              on_forward_graph=False)
         print
 
     # Runs a Dijkstra search independently for each boundary node.
     @staticmethod
-    def independent_dijkstra(boundary_nodes, grid_of_nodes):
+    def independent_dijkstra(boundary_nodes, nyc_map):
         # Assign each boundary node an i for distance
         DijkstrasAlgorithm.init_boundary_node_ids(boundary_nodes)
 
         print("initializing")
         # Gives each node a distance from the boundary nodes, which are
         # initially either INF(infinity) or 0
-        DijkstrasAlgorithm.initialize_nodes(boundary_nodes, grid_of_nodes)
+        DijkstrasAlgorithm.initialize_nodes(boundary_nodes, nyc_map)
 
         forward_total_expanded = 0
         forward_overall_max_pq_size = 0
@@ -316,15 +296,13 @@ class DijkstrasAlgorithm:
     # Given where the nodes came from, rebuilds the path that was taken to the
     # final node
     @staticmethod
-    def set_arc_flags(grid_of_nodes):
-        for column in grid_of_nodes:
-            for grid_region in column:
-                for node in grid_region.nodes:
-                    # Set forward arc flags
-                    for connection in node.forward_predecessors:
-                        if connection is not None:
-                            node.is_forward_arc_flags[connection] = True
-                    # Set backward arc flags
-                    for connection in node.backward_predecessors:
-                        if connection is not None:
-                            node.is_backward_arc_flags[connection] = True
+    def set_arc_flags(nyc_map):
+        for node in nyc_map.nodes:
+            # Set forward arc flags
+            for connection in node.forward_predecessors:
+                if connection is not None:
+                    node.is_forward_arc_flags[connection] = True
+            # Set backward arc flags
+            for connection in node.backward_predecessors:
+                if connection is not None:
+                    node.is_backward_arc_flags[connection] = True

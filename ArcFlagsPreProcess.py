@@ -2,20 +2,19 @@ from Node import get_correct_nodes
 from DijkstrasAlgorithm import DijkstrasAlgorithm
 import csv
 import timeit
+from Map import Map
 
 
 # Pre-process the map with arc flags.
 class ArcFlagsPreProcess:
     # Resets the arcflag set in dijkstras algorithm
     @staticmethod
-    def reset_arc_flags(grid_of_nodes):
-        for column in grid_of_nodes:
-            for region in column:
-                for node in region.nodes:
-                    for connection in node.is_forward_arc_flags:
-                        node.is_forward_arc_flags[connection] = False
-                    for connection in node.is_backward_arc_flags:
-                        node.is_backward_arc_flags[connection] = False
+    def reset_arc_flags(nyc_map):
+        for node in nyc_map.nodes:
+            for connection in node.is_forward_arc_flags:
+                node.is_forward_arc_flags[connection] = False
+            for connection in node.is_backward_arc_flags:
+                node.is_backward_arc_flags[connection] = False
 
     # Converts an arcflag binary string to hexadecimal so that it can be stored
     # in text easier
@@ -30,66 +29,62 @@ class ArcFlagsPreProcess:
 
     @staticmethod
     def run(map_file):
-        grid_of_nodes = get_correct_nodes(20, "speeds_per_hour/" + map_file,
-                                          None)
+        nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv",
+                      lookup_kd_size=1, region_kd_size=1000)
+        nyc_map.assign_node_regions()
+
+        get_correct_nodes(nyc_map, "speeds_per_hour/" + map_file, None)
+
         i = 0
         forward_arc_flags_dict = dict()
         backward_arc_flags_dict = dict()
-        # fastest_velocity = 0
-        for column in grid_of_nodes:
-            for grid_region in column:
-                for node in grid_region.nodes:
-                    for conn in node.is_forward_arc_flags:
-                        forward_arc_flags_dict[
-                            (str(node.node_id), str(conn.node_id))] = [0] * 400
-                    for conn in node.is_backward_arc_flags:
-                        backward_arc_flags_dict[
-                            (str(node.node_id), str(conn.node_id))] = [0] * 400
-                    # for link in node.forward_links:
-                    #    if link.speed > fastest_velocity:
-                    #        fastest_velocity = link.speed
-        start = timeit.default_timer()
-        for column in grid_of_nodes:
-            for grid_region in column:  # one grid to test
-                print "Next Region!"
-                if i % 10 == 0:
-                    stop = timeit.default_timer()
-                    print stop - start
-                set_of_nodes = set()
-                # Makes sure set_of_nodes only contains the boundary nodes
-                for node in grid_region.nodes:
-                    if node.is_boundary_node:
-                        set_of_nodes.add(node)
 
-                start = timeit.default_timer()
-                # Does a multi-origin bidirectional dijkstra search to get an
-                # arcflag tree
-                warmstart = True
-                use_domination_value = False
-                DijkstrasAlgorithm.bidirectional_dijkstra(set_of_nodes,
-                                                          grid_of_nodes,
-                                                          warmstart,
-                                                          use_domination_value)
-                for column in grid_of_nodes:
-                    for grid_region in column:
-                        for node in grid_region.nodes:
-                            for conn in node.is_forward_arc_flags:
-                                if node.is_forward_arc_flags[conn]:
-                                    # A new arcFlag entry - start_node,
-                                    # end_node, region, arcflags go to
-                                    forward_arc_flags_dict[(str(node.node_id),
-                                                            str(conn.node_id)
-                                                            )][i] = 1
-                            for conn in node.is_backward_arc_flags:
-                                if node.is_backward_arc_flags[conn]:
-                                    # A new arcFlag entry - start_node,
-                                    # end_node, region, arcflags go to
-                                    backward_arc_flags_dict[(str(conn.node_id),
-                                                             str(node.node_id)
-                                                             )][i] = 1
-                ArcFlagsPreProcess.reset_arc_flags(grid_of_nodes)
-                i += 1
-                break  # debug - only process one grid
+        for node in nyc_map.nodes:
+            for conn_links in node.forward_links:
+                conn = conn_links.connecting_node
+                forward_arc_flags_dict[
+                    (node.node_id, conn.node_id)
+                    ] = [0] * nyc_map.total_region_count
+
+            for conn_links in node.backward_links:
+                conn = conn_links.origin_node
+                backward_arc_flags_dict[
+                    (conn.node_id, node.node_id)
+                    ] = [0] * nyc_map.total_region_count
+
+        start = timeit.default_timer()
+        for region_id in range(nyc_map.total_region_count):
+            print "Next Region!"
+            if i % 10 == 0:
+                stop = timeit.default_timer()
+                print stop - start
+
+            boundary_nodes = nyc_map.get_region_boundary_nodes(region_id)
+
+            start = timeit.default_timer()
+            # Does a multi-origin bidirectional dijkstra search to get an
+            # arcflag tree
+            warmstart = True
+            use_domination_value = False
+            DijkstrasAlgorithm.bidirectional_dijkstra(boundary_nodes,
+                                                      nyc_map,
+                                                      warmstart,
+                                                      use_domination_value)
+            for node in nyc_map.nodes:
+                for conn in node.is_forward_arc_flags:
+                    if node.is_forward_arc_flags[conn]:
+                        # A new arcFlag entry - start_node,
+                        # end_node, region, arcflags go to
+                        forward_arc_flags_dict[(node.node_id,
+                                                conn.node_id)][i] = 1
+                for conn in node.is_backward_arc_flags:
+                    if node.is_backward_arc_flags[conn]:
+                        # A new arcFlag entry - start_node,
+                        # end_node, region, arcflags go to
+                        backward_arc_flags_dict[(conn.node_id,
+                                                 node.node_id)][i] = 1
+            ArcFlagsPreProcess.reset_arc_flags(nyc_map)
+            i += 1
             break  # debug - only process one grid
         stop = timeit.default_timer()  # debug - only process one grid
         print "Running time:", stop - start, "seconds"  # debug

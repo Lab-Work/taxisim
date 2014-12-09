@@ -43,6 +43,21 @@ class Map:
     def get_region(self, point):
         return self.region_kd_tree.get_leaf(point)
 
+    def get_all_nodes_in_region(self, region_id):
+        set_of_nodes = set()
+        for node in self.nodes:
+            if node.region_id == region_id:
+                set_of_nodes.add(node)
+        return set_of_nodes
+
+    def get_region_boundary_nodes(self, region_id):
+        nodes = self.get_all_nodes_in_region(region_id)
+        boundary_nodes = []
+        for node in nodes:
+            if node.is_boundary_node:
+                boundary_nodes.append(node)
+        return boundary_nodes
+
     # Assigns integer region_id numbers to every node in the graph
     # Regions are based on the rectangular leaf nodes of the region_kd_tree
     def assign_node_regions(self):
@@ -58,6 +73,16 @@ class Map:
                 next_region_id += 1
 
             node.region_id = region_id_lookup[region]
+
+        self.total_region_count = next_region_id
+
+        for node in self.nodes:
+            for connecting_link in node.forward_links:
+                connecting_node = connecting_link.connecting_node
+                if connecting_node is None:
+                    pass
+                if connecting_node.region != node.region:
+                    connecting_node.is_boundary_node = True
 
         print "total regions : " + str(next_region_id)
 
@@ -88,13 +113,15 @@ class Map:
         # Maps (begin_node_id, end_node_id) to Link objects
         self.links_by_node_id = {}
 
+        self.total_region_count = 0
+
         # Read nodes file and create node objects
         with open(nodes_fn, "r") as f:
             csv_reader = csv.reader(f)
             csv_reader.next()  # throw out header
             for line in csv_reader:
                 # Unpack CSV line
-                [node_id,
+                [begin_node_id,
                  _,  # is_complete,
                  _,  # num_in_links,
                  _,  # num_out_links,
@@ -113,7 +140,7 @@ class Map:
                 self.min_lon = min(self.min_lon, longitude)
                 self.max_lon = max(self.min_lon, longitude)
 
-                node = Node(int(node_id), latitude, longitude, int(region_id))
+                node = Node(int(begin_node_id), latitude, longitude, int(region_id))
                 self.nodes.append(node)
                 self.nodes_by_id[node.node_id] = node
 
@@ -152,7 +179,8 @@ class Map:
                     end_node = self.nodes_by_id[end_node_id]
 
                     # Create the Link object and set properties
-                    link = Link(begin_node_id, float(street_length))
+                    link = Link(begin_node_id, end_node_id,
+                                float(street_length))
                     link.origin_node = begin_node
                     link.connecting_node = end_node
 
