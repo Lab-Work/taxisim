@@ -3,7 +3,6 @@ class Link:
     def __init__(self, node_id, length, speed=10):
         self.origin_node_id = node_id
         self.length = float(length)
-        self.speed = float(speed)
         self.time = float(length) / float(speed)
         self.origin_node = None
         self.connecting_node = None

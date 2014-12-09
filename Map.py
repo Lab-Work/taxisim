@@ -64,8 +64,23 @@ class Map:
     def get_max_speed(self):
         max_speed = 0.0
         for link in self.links:
-            max_speed = max(max_speed, link.speed)
+            link_speed = float(link.length) / link.time
+            max_speed = max(max_speed, link_speed)
         return max_speed
+    
+    def set_all_link_speeds(self, speed):
+        for link in self.links:
+            link.time = link.length / speed
+    
+    def save_speeds(self, filename):
+        with open(filename, 'w') as f:
+            writer = csv.writer(f)
+            writer.writerow(['start_node_id','end_node_id', 'start_lat','start_lon','end_lat','end_lon','speed'])
+            for link in self.links:
+                speed = link.length / link.time
+                writer.writerow([link.origin_node.node_id, link.connecting_node.node_id,
+                                 link.origin_node.lat, link.origin_node.long,
+                                 link.connecting_node.lat, link.connecting_node.long, speed])
 
     #Builds the Map from CSV files describing the Nodes and LInks
     #Params:

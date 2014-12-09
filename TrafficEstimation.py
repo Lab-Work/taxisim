@@ -9,6 +9,11 @@ from Trip import Trip
 from Map import Map
 from datetime import datetime
 import csv
+from math import log
+from matplotlib import pyplot as plt
+
+MAX_SPEED = 30
+
 
 def match_trips_to_nodes(road_map, trips):
     trip_lookup = {} # lookup a trip by origin, destination nodes
@@ -34,18 +39,34 @@ def match_trips_to_nodes(road_map, trips):
     return new_trips
 
 
-def estimate_travel_times(road_map, trips):
+def estimate_travel_times(road_map, trips, num_outer_loop=10):
 
     
     unique_trips = match_trips_to_nodes(road_map, trips)
     print "There are " + str(len(unique_trips)) + " unique trips."
+
+
+    
+    #set initial travel times
+    s_t = 0.0
+    s_d = 0.0
+    for trip in trips:
+        s_t += trip.time
+        s_d += trip.dist * 1609.34
+    avg_velocity = s_d / s_t
+    road_map.set_all_link_speeds(avg_velocity)
     
     
-    while(True):    
-        print("$$$$$$$$$$$$$$$$$ OUTER LOOP $$$$$$$$$$$$$$$$$$$$$$$$")
+
+    iter_errors = []
+    outer_iter = 0
+    for outer_iter in range(num_outer_loop):
+        road_map.save_speeds('tmp_speeds/iteration_' + str(outer_iter) + '.csv')
+        print("################## OUTER LOOP " + str(outer_iter) + " ######################")
         t1 = datetime.now()
         #Determine optimal routes for all trips
         max_speed = road_map.get_max_speed()
+        print("max speed = " + str(max_speed))
         for trip in unique_trips:
             trip.path_links = bidirectional_search(trip.origin_node, trip.dest_node, use_astar=True, max_speed=max_speed)
             #print(str(trip.origin_node.node_id) + " -- > " + str(trip.dest_node.node_id) + " : " + str(len(trip.path_links)) + " hops.")
@@ -72,9 +93,12 @@ def estimate_travel_times(road_map, trips):
             #Links with a negative offset are systematically underestiamted - travel times should be increased
             for link in road_map.links:
                 if(link.offset > 0):
-                    link.time = link.time / (1 + eps)
+                    link.time /= (1 + eps*log(1 + link.offset))
                 elif(link.offset < 0):
-                    link.time = link.time * (1 + eps)    
+                    link.time *=  (1 + eps*log(1 - link.offset))
+                
+                link.time = max(link.time, link.length/MAX_SPEED)
+
     
             
             #Step 2 - Evaluate proposed travel times in terms of L1 error
@@ -87,10 +111,11 @@ def estimate_travel_times(road_map, trips):
             
             
             
+            
             #Step 3 - compare new and old error
             #If the new is worse, that means we stepped to far, so decrease the step size
             if(prev_l1_error == float('inf')):
-                print l1_error
+                print "first_L1 = " + str(l1_error)
             
             if(l1_error < prev_l1_error):
                 #An improvement
@@ -101,16 +126,19 @@ def estimate_travel_times(road_map, trips):
                 #Rollback previous changes
                 for link in road_map.links:
                     if(link.offset > 0):
-                        link.time = link.time * (1 + eps)
+                        link.time = link.time * (1 + eps*log(1 + link.offset))
                     elif(link.offset < 0):
-                        link.time = link.time / (1 + eps)  
+                        link.time = link.time / (1 + eps*log(1 - link.offset))
+                    
+            
+
                 
                 #Decrease step size
                 eps *= .75
-                print ("================= eps=" + str(eps) + " ===================")
-                print l1_error
+                print ("eps=" + str(eps).ljust(22) + "old_L1=" + str(prev_l1_error).ljust(22) + "new_L1= " + str(l1_error))
                 
-                #Rollback previous changes
+
+            iter_errors.append(prev_l1_error)
                 
             #Step 4 - compute new offsets on each link
             for trip in unique_trips:
@@ -119,15 +147,23 @@ def estimate_travel_times(road_map, trips):
                     #This trip was overestimated - link offsets increase
                     for link in trip.path_links:
                         link.offset += trip.num_occurrences
-                else:
+                elif(trip.estimated_time < trip.time):
                     #This trip was underrestimated - link offsets decrease
                     for link in trip.path_links:
                         link.offset -= trip.num_occurrences
+                        
                         
             num_iter += 1
         t3 = datetime.now()
         print ("GD time: " + str(t3 - t2))
         print ("Num iter " + str(num_iter))
+        plt.plot(iter_errors)
+        plt.savefig("travel_time_errors.png")
+        
+        road_map.save_speeds('tmp_speeds/iteration_' + str(num_outer_loop) + '.csv')
+
+        
+        
         
 
 def load_trips(filename, limit=float('inf')):
@@ -147,7 +183,7 @@ def load_trips(filename, limit=float('inf')):
 
 def test_on_small_sample():
     print("Loading trips")
-    trips = load_trips("sample.csv", 10000)
+    trips = load_trips("sample_2.csv", 20000)
     
     print("We have " + str(len(trips)) + " trips")
     
@@ -158,10 +194,53 @@ def test_on_small_sample():
     
     print("Estimating travel times")
     estimate_travel_times(nyc_map, trips)
+
+
+def plot_unique_trips():
+    from matplotlib import pyplot as plt
+    trip_lookup = {}
+    print("Loading map")
+    road_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv")
     
+    print("Matching nodes")
+    sizes = []
+    with open("sample.csv", "r") as f:
+        reader = csv.reader(f)
+        reader.next()
+        for line in reader:
+            trip = Trip(line)
+
+            trip.num_occurrences = 1
+            trip.origin_node = road_map.get_nearest_node(trip.fromLat, trip.fromLon)
+            trip.dest_node = road_map.get_nearest_node(trip.toLat, trip.toLon)
+            
+            if((trip.origin_node, trip.dest_node) in trip_lookup):
+                #Already seen this trip at least once
+                trip_lookup[trip.origin_node, trip.dest_node].num_occurrences += 1
+            elif trip.origin_node !=None and trip.dest_node != None:
+                #Never seen this trip before
+                trip_lookup[trip.origin_node, trip.dest_node] = trip
+        
+            sizes.append(len(trip_lookup))
+    plt.plot(range(len(sizes)), sizes)
+    plt.xlabel("Inner Loop Iteration")
+    plt.ylabel("L1 Error (sec)")
+    fig = plt.gcf()
+    fig.set_size_inches(20,10)
+    fig.savefig('test2png.png',dpi=100)
+
+    
+    #Make unique trips into a list and return
+    new_trips = [trip_lookup[key] for key in trip_lookup]
+    return new_trips
+
+
 
 if(__name__=="__main__"):
+    t1 = datetime.now()
     test_on_small_sample()
-    
+    t2 = datetime.now()
+    print("TOTAL TIME = " + str(t2 - t1))
+    #plot_unique_trips()    
     
     
