@@ -69,7 +69,7 @@ def compute_avg_velocity(trips):
 # Params:
     # road_map - a Map object, which contains the road geometry
     # trips - a list of Trip objects
-def estimate_travel_times2(road_map, trips, max_iter=20):
+def estimate_travel_times(road_map, trips, max_iter=20):
 
     #Collapse identical trips    
     unique_trips = match_trips_to_nodes(road_map, trips)
@@ -212,7 +212,7 @@ def test_on_small_sample():
    
     
     print("Estimating travel times")
-    estimate_travel_times2(nyc_map, trips)
+    estimate_travel_times(nyc_map, trips)
 
 
 def plot_unique_trips():
