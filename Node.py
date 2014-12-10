@@ -226,29 +226,10 @@ def hex_deconverter(hex_string):
 # Returns a set of nodes with all their forward_links properly set
 def set_up_nodes(nyc_map, time_file, arc_flag_file):
     dict_of_links = nyc_map.links_by_node_id
-#     all_links = csv.reader(open("nyc_map4/links.csv", 'rb'), delimiter=',')
-#     speed_of_links = None
-#     all_links = nyc_map.links
     if time_file is not None:
         speed_of_links = csv.reader(open(time_file, 'rb'), delimiter=',')
-    arc_flags = None
-    if arc_flag_file is not None:
-        arc_flags = csv.reader(open(arc_flag_file, 'rb'), delimiter=',')
-    # Dictionary should be start_node_id->setOfAllLinks that have that
-    # start_node
-#     header = True
-#     for link in all_links:
-#         if header:
-#             header = False
-#             continue
-#         if link[1] in dict_of_links:
-#             dict_of_links[link[1]].append(link)
-#         else:
-#             dict_of_links[link[1]] = []
-#             dict_of_links[link[1]].append(link)
-    # Key is start_node, list of all streets that start at that node
     header = True
-    # Key is start_node, adds speeds of links
+    # Adds speeds of links
     if speed_of_links is not None:
         for link in speed_of_links:
             if header:
@@ -262,6 +243,9 @@ def set_up_nodes(nyc_map, time_file, arc_flag_file):
     # Key is start_node, adds arc_links
     # TODO: figure out what to fill here for an arc_flag.csv
     """
+    arc_flags = None
+    if arc_flag_file is not None:
+        arc_flags = csv.reader(open(arc_flag_file, 'rb'), delimiter=',')
     if arc_flags is not None:
         for link in arc_flags:
             if header:
@@ -269,49 +253,6 @@ def set_up_nodes(nyc_map, time_file, arc_flag_file):
                 continue
             pass
     """
-#     dict_of_nodes = dict()
-#     all_nodes = csv.reader(open("nyc_map4/nodes.csv", 'rb'), delimiter=',')
-#     all_nodes = nyc_map.nodes
-#     counter = 0
-#     for node in all_nodes:
-#         # Want to ignore the header line
-#         if counter != 0:
-#             # Creates the nodes and put them in the dictionary
-#             # with the node_id as the key
-#             # node_id, ycoord, xcoord, grid_region_id
-#             new_node = Node(node[0], node[6], node[5], node[10])
-#             try:
-#                 list_of_links = dict_of_links[new_node.node_id]
-#                 for link in list_of_links:
-#                     # if the links.csv file has 16 columns
-#                     if len(link) == 16 and link[2] != new_node.node_id:
-#                         new_node.add_connecting_node(
-#                             # end_node_id, street_length, speed = 1,
-#                             # street_length/1
-#                             link[2], link[5], 1, float(link[5]) / 1)
-# 
-#                     # if the links.csv file has 19 columns
-#                     if (len(link) == 19 and link[2] != new_node.node_id and
-#                             float(link[17]) > 0):
-#                         new_node.add_connecting_node(
-#                             link[2], link[5], link[16], link[17])
-#                         new_node.set_arc_flags(link[2], link[18])
-# 
-#                     # if the links.csv file has 18 columns
-#                     if (len(link) == 18 and link[2] != new_node.node_id and
-#                             float(link[17]) > 0):
-#                         new_node.add_connecting_node(
-#                             link[2], link[5], link[16], link[17])
-# 
-#             except(KeyError):
-#                 pass
-#             dict_of_nodes[new_node.node_id] = new_node
-#         counter += 1
-#     # Changes what they connections keys are (from node_id's to nodes)
-#     fix_nodes(dict_of_nodes, speed_of_links, arc_flags)
-#     set_of_nodes = set()
-#     for node_id in dict_of_nodes:
-#         set_of_nodes.add(dict_of_nodes[node_id])
     return set(nyc_map.nodes)
 
 

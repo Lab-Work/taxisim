@@ -3,9 +3,6 @@ from Map import Map
 from Queue import PriorityQueue
 from random import randint
 from datetime import datetime
-from MITSpeedAlgorithm import find_nodes
-
-from matplotlib import pyplot as plt
 
 HEURISTIC_DISCOUNT = .8
 
@@ -19,7 +16,6 @@ HEURISTIC_DISCOUNT = .8
 # max_speed - maximum speed on any link in the graph. used for the A* heuristic
 # Returns:
 # path - a list of Links on the shortest path, in order
-# num_expanded - the number of nodes that were expanded during hte search
 def bidirectional_search(
         start_node,
         end_node,
@@ -40,12 +36,10 @@ def bidirectional_search(
     # Step 2 - reconstruct the path, using the pointers left on the node objects
     path = reconstruct_path(center_node)
 
-    num_expanded = len(forward_expanded) + len(backward_expanded)
-
     # Step 3 - clean up (reset pointers and time costs on node objects)
     # Note that we only need to do this on nodes touched by the search
     cleanup(forward_pq, forward_expanded, backward_pq, backward_expanded)
-    return path, num_expanded
+    return path
 
 # Helper method - you should probably call bidirectiona_search() instead, since that also cleans up after
 # Runs a forward and backward dijkstra algorithms, stopping when they meet.  Leaves pointers and partial
@@ -123,7 +117,7 @@ def bidirectional_dijkstra(
                     # "A Fast Algorithm for Finding Better Routes by AI Search Techniques", Ikeda et al., 1994
                     distance_difference = end_node.approx_dist_to(
                         link.connecting_node) - start_node.approx_dist_to(link.connecting_node)
-                    proposed_cost += (distance_difference /
+                    proposed_cost += (distance_difference / 
                                       max_speed) * (HEURISTIC_DISCOUNT / 2)
                 forward_pq.put((proposed_cost, link.connecting_node))
 
@@ -160,7 +154,7 @@ def bidirectional_dijkstra(
                 if(use_astar):
                     distance_difference = start_node.approx_dist_to(
                         link.origin_node) - end_node.approx_dist_to(link.origin_node)
-                    proposed_cost += (distance_difference /
+                    proposed_cost += (distance_difference / 
                                       max_speed) * (HEURISTIC_DISCOUNT / 2)
                 backward_pq.put((proposed_cost, link.origin_node))
 
@@ -233,7 +227,6 @@ def cleanup(forward_pq, forward_expanded, backward_pq, backward_expanded):
     # max_speed - maximum speed on any link in the graph. used for the A* heuristic
 # Returns:
     # path - a list of Links on the shortest path, in order
-    # num_expanded - the number of nodes that were expanded during hte search
 def simple_dijkstra(
         start_node,
         end_node,
@@ -281,7 +274,7 @@ def simple_dijkstra(
 
     cleanup(forward_pq, forward_expanded, None, None)
 
-    return path, len(forward_expanded)
+    return path
 
 
 ###################### TESTING CODE ###################################
@@ -379,7 +372,7 @@ def bigComparison(num_trials):
     correct_paths = []
     t1 = datetime.now()
     for (orig, dest) in samples:
-        path, num_expanded = simple_dijkstra(orig, dest)
+        path = simple_dijkstra(orig, dest)
         correct_paths.append(path)
     t2 = datetime.now()
     print "Single direction: " + str(t2 - t1)
@@ -388,8 +381,7 @@ def bigComparison(num_trials):
     num_mistakes = 0
     for i in range(len(samples)):
         (orig, dest) = samples[i]
-        path, num_expanded = simple_dijkstra(
-            orig, dest, use_astar=True, max_speed=max_speed)
+        path = simple_dijkstra(orig, dest, use_astar=True, max_speed=max_speed)
         if(path != correct_paths[i]):
             num_mistakes += 1
             print (orig.node_id, dest.node_id)
@@ -403,7 +395,7 @@ def bigComparison(num_trials):
     num_mistakes = 0
     for i in range(len(samples)):
         (orig, dest) = samples[i]
-        path, expanded2 = bidirectional_search(orig, dest)
+        path = bidirectional_search(orig, dest)
         if(path != correct_paths[i]):
             num_mistakes += 1
             print (orig.node_id, dest.node_id)
@@ -417,8 +409,11 @@ def bigComparison(num_trials):
     num_mistakes = 0
     for i in range(len(samples)):
         (orig, dest) = samples[i]
-        path, expanded2 = bidirectional_search(
-            orig, dest, use_astar=True, max_speed=max_speed)
+        path = bidirectional_search(
+            orig,
+            dest,
+            use_astar=True,
+            max_speed=max_speed)
         if(path != correct_paths[i]):
             num_mistakes += 1
             print (orig.node_id, dest.node_id)
@@ -451,15 +446,17 @@ def test_specific_paths():
     for(origin_id, dest_id) in od_pairs:
         print(origin_id, dest_id)
         orig, dest = nodes_by_id[origin_id], nodes_by_id[dest_id]
-        path1, expanded1 = simple_dijkstra(orig, dest)
+        path1 = simple_dijkstra(orig, dest)
         print("Dijkstra expanded: " + str(expanded1))
-        path2, expanded2 = bidirectional_search(orig, dest)
+        path2 = bidirectional_search(orig, dest)
         print("Bidirectional expanded: " + str(expanded2))
-        path3, expanded3 = simple_dijkstra(
-            orig, dest, use_astar=True, max_speed=max_speed)
+        path3 = simple_dijkstra(orig, dest, use_astar=True, max_speed=max_speed)
         print("A* expanded: " + str(expanded3))
-        path4, expanded4 = bidirectional_search(
-            orig, dest, use_astar=True, max_speed=max_speed)
+        path4 = bidirectional_search(
+            orig,
+            dest,
+            use_astar=True,
+            max_speed=max_speed)
         print("Bidirectional A* expanded: " + str(expanded4))
         print path2 == path1
         compare_paths(path1, path2)
@@ -479,11 +476,17 @@ def run_many_queries(od_list, use_bidirectional, use_astar, max_speed):
     t1 = datetime.now()
     for (orig, dest) in od_list:
         if(use_bidirectional):
-            path, num_expanded = bidirectional_search(
-                orig, dest, use_astar=use_astar, max_speed=max_speed)
+            path = bidirectional_search(
+                orig,
+                dest,
+                use_astar=use_astar,
+                max_speed=max_speed)
         else:
-            path, num_expanded = simple_dijkstra(
-                orig, dest, use_astar=use_astar, max_speed=max_speed)
+            path = simple_dijkstra(
+                orig,
+                dest,
+                use_astar=use_astar,
+                max_speed=max_speed)
         paths.append(path)
     t2 = datetime.now()
     return paths, t2 - t1
