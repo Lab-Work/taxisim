@@ -2,20 +2,22 @@
 """
 Created on Mon Dec  8 14:15:54 2014
 
-@author: brian
+@author: Brian Donovan (briandonovan100@gmail.com)
 """
 from BiDirectionalSearch import bidirectional_search
 from Trip import Trip
 from Map import Map
 from datetime import datetime
 import csv
-from math import log
 from matplotlib import pyplot as plt
 
 MAX_SPEED = 30
 
 # Uses a Map object to match a list of Trips to their nearest intersections (Nodes)
 # Upon completion, each trip will have .origin_node and .dest_node attributes
+# For efficiency, duplicates (some orig/dest) are also removed - although the Trips
+# are edited "in place", this function still returns a subset of them.  The trip.dup_times
+# attribute is set, which
 # Params:
     # road_map - a Map object, which supplies the road geometry
     # trips - a list of Trip objects to be map-matched
@@ -33,9 +35,12 @@ def match_trips_to_nodes(road_map, trips):
             if((trip.origin_node, trip.dest_node) in trip_lookup):
                 #Already seen this trip at least once
                 trip_lookup[trip.origin_node, trip.dest_node].num_occurrences += 1
+                trip_lookup[trip.origin_node, trip.dest_node].dup_times.append(trip.time)
+                trip.dup_times = None
             elif trip.origin_node !=None and trip.dest_node != None:
                 #Never seen this trip before
                 trip_lookup[trip.origin_node, trip.dest_node] = trip
+                trip_lookup[trip.origin_node, trip.dest_node].dup_times = [trip.time]
 
     
     #Make unique trips into a list and return
@@ -61,38 +66,102 @@ def compute_avg_velocity(trips):
 
 
 
+
+# Predicts the duration of trips, based on their origin, destination, and the state of traffic
+# Computes several L1-based error metrics in the process, which measure the prediction accuracy
+# It is assumed that the driver will take the shortest path
+# This function can be used in a few different contexts, which are given by the route and proposed parameters
+# Params:
+    # road_map - a Map object which has some travel times on each link
+    # trips - a set of Trips that will be routed and predicted
+    # route - if True, the shortest paths will be computed (very costly)
+        # otherwise, the existing ones will be used (trip.path_links)
+    # proposed - if True, link.proposed_time will be used as the cost instead of link.time
+    # max_speed - the maximum speed of any Link.  Will be computed if None (a little costly).
+        # This is used by the A* heuristic - only important if route=True
+# Returns:
+    # l1_error - the total absolute error of all trips
+    # avg_trip_error - average absolute error across all trips
+    # avg_perc_error - average percent error across all trips
+def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = None):
+    if(max_speed==None):
+        max_speed = road_map.get_max_speed()
+    
+    l1_error = 0
+    avg_perc_error = 0
+    num_trips = 0
+    for trip in trips:
+        if(route):
+            trip.path_links = bidirectional_search(trip.origin_node, trip.dest_node, use_astar=True, max_speed=max_speed)
+        
+        if(proposed):
+            trip.estimated_time = sum([link.proposed_time for link in trip.path_links])
+        else:
+            trip.estimated_time = sum([link.time for link in trip.path_links])
+        
+        # This trip may actually represent several duplicate trips (in terms of origin/destination),
+        # which may have different true times - the dup_times parameter loops through these 
+        for true_time in trip.dup_times:
+            l1_error += abs(trip.estimated_time - true_time)
+            avg_perc_error +=  (abs(trip.estimated_time - true_time) / true_time)
+            num_trips +=  1
+    
+    avg_perc_error /= num_trips
+    avg_trip_error = l1_error / num_trips
+    return l1_error, avg_trip_error, avg_perc_error
+        
+        
+
+
+
+
 # Uses an iterative algorithm, similar to the one supplied in
 # http://www.pnas.org/content/111/37/13290
 # in order to estimate link-by link travel times, using many Trips.
 # Upon completion, all of the Link objects in road_map.links will have their
 # .time attribute modified
+# Some diagonstics are also computed in order to assess the model's quality over iterations
 # Params:
     # road_map - a Map object, which contains the road geometry
-    # trips - a list of Trip objects
-def estimate_travel_times(road_map, trips, max_iter=20):
-
+    # trips - a list of Trip objects.
+    # max_iter - maximum number of iterations before the experiment ends
+    # test_set - an optional hold-out test set to assess how well the model generalizes.
+# Returns:
+    # iter_avg_errors - A list of the average absolute errors at each iteration
+    # iter_perc_errors - A list of average percent errors at each iteration
+    # test_avg_errors - A list of average absolute errors on the test set at each iteration
+    # test_perc_errors - A list of average percent errors on the test set at each iteration
+def estimate_travel_times(road_map, trips, max_iter=20, test_set=None):
+    DEBUG = False
     #Collapse identical trips    
     unique_trips = match_trips_to_nodes(road_map, trips)
-    print "There are " + str(len(unique_trips)) + " unique trips."
+    #print "There are " + str(len(unique_trips)) + " unique trips."
+    
+    if(test_set!= None):
+        unique_test_trips = match_trips_to_nodes(road_map, test_set)
 
-    #set initial travel times to average velocity across trips
+    # Set initial travel times to average velocity across trips
     avg_velocity = compute_avg_velocity(trips)
     road_map.set_all_link_speeds(avg_velocity)
     
     
-    iter_errors = []
+    iter_avg_errors = []
+    iter_perc_errors = []
+    test_avg_errors = []
+    test_perc_errors = []
+    
     outer_iter = 0
     outer_loop_again = True
-    #Outer loop - route all of the trips and produce travel time estimates
-    #Will stop once the travel times cannot be improved (or max_iter is reached)
+    # Outer loop - route all of the trips and produce travel time estimates
+    # Will stop once the travel times cannot be improved (or max_iter is reached)
     while(outer_loop_again and outer_iter < max_iter):
         outer_iter += 1
-        road_map.save_speeds('tmp_speeds/iteration_' + str(outer_iter) + '.csv')
-        print("################## OUTER LOOP " + str(outer_iter) + " ######################")
+        if(DEBUG):
+            print("################## OUTER LOOP " + str(outer_iter) + " ######################")
         
-        #For each link, we maintain the offset value
-        #Which is the number of overestimated minus underestimated travel times
-        #Of trips which use this link
+        # For each link, we maintain the offset value
+        # Which is the number of overestimated minus underestimated travel times
+        # Of trips which use this link
         for link in road_map.links:
             link.offset = 0 #Initially we have 0 overestimated and underestimated
             link.proposed_time = link.time
@@ -100,27 +169,40 @@ def estimate_travel_times(road_map, trips, max_iter=20):
         
         t1 = datetime.now()
         max_speed = road_map.get_max_speed()
-        print("max speed = " + str(max_speed))
+        if(DEBUG):
+            print("max speed = " + str(max_speed))
         
-        l1_error = 0
-        #Determine optimal routes for all trips - also determine travel time errors and Link offsets
+        # Determine optimal routes for all trips, and predict the travel times
+        # This is the most costly part of each iteration
+        # l1_error stores the sum of all absolute errors
+        l1_error, avg_trip_error, avg_perc_error = predict_trip_times(road_map, unique_trips, route=True)
+        iter_avg_errors.append(avg_trip_error)
+        iter_perc_errors.append(avg_perc_error)
+        
+        # If we have a test set, also evaluate the map on it
+        if(test_set != None):
+            test_l1_error, test_avg_trip_error, test_perc_error = predict_trip_times(road_map, unique_test_trips, route=True)
+            test_avg_errors.append(test_avg_trip_error)
+            test_perc_errors.append(test_perc_error)
+        
+        # Compute link offsets based on trip time errors
+        # If we overestimate, increase link offsets
+        # If we underestimate, decrease link offsets
         for trip in unique_trips:
-            trip.path_links = bidirectional_search(trip.origin_node, trip.dest_node, use_astar=True, max_speed=max_speed)
-            #Estimated trip time is the sum of link travel costs            
-            estimated_time = sum([link.time for link in trip.path_links])
-            if(estimated_time > trip.time):
-                for link in trip.path_links:
-                    link.offset += trip.num_occurrences
-            elif(estimated_time < trip.time):
-                for link in trip.path_links:
-                    link.offset -= trip.num_occurrences
+            for true_time in trip.dup_times:
+                if(trip.estimated_time > true_time):
+                    for link in trip.path_links:
+                        link.offset += trip.num_occurrences
+                elif(trip.estimated_time < true_time):
+                    for link in trip.path_links:
+                        link.offset -= trip.num_occurrences
             
-            #compute the overall absolute error for all trips - note that trips are weighted by their number of occurrences
-            l1_error += abs(estimated_time - trip.time) * trip.num_occurrences
         
-        iter_errors.append(l1_error)
+        
+        
         t2 = datetime.now()
-        print("Time to route: " + str(t2 - t1))
+        if(DEBUG):
+            print("Time to route: " + str(t2 - t1))
         
         eps = .2 # The step size
         outer_loop_again = False # Start optimistic - this might be the last iteration
@@ -131,7 +213,8 @@ def estimate_travel_times(road_map, trips, max_iter=20):
         # The inner loop stops if we find a step that makes an improvement, or the step size gets too small
         # A small step size will also trigger the outer loop to stop
         while(eps > .0001):
-            print("Taking a step at eps=" + str(eps))
+            if(DEBUG):
+                print("Taking a step at eps=" + str(eps))
             #Inner Loop Step 1 - propose new travel times on the links
             #Links with a positive offset are systematically overestimated - travel times should be decreased
             #Links with a negative offset are systematically underestiamted - travel times should be increased
@@ -139,7 +222,7 @@ def estimate_travel_times(road_map, trips, max_iter=20):
                 if(link.offset > 0):
                     link.proposed_time = link.time / (1 + eps)
                 elif(link.offset < 0):
-                    link.proposed_time *= (1 + eps)
+                    link.proposed_time = link.time * (1 + eps)
                 
                 #Constrain the travel time to a physically realistic value
                 link.proposed_time = max(link.proposed_time, link.length/MAX_SPEED)
@@ -147,19 +230,17 @@ def estimate_travel_times(road_map, trips, max_iter=20):
     
             # Inner Loop Step 2 - Evaluate proposed travel times in terms of L1 error
             # Use routes to predict travel times for trips
-            new_l1_error = 0 #Stores the total prediction error across all trips. We want to minimize this
-            for trip in unique_trips:
-                #estimated travel time is the sum of link costs for this trip
-                estimated_time = sum([link.proposed_time for link in trip.path_links])
-                new_l1_error += abs(estimated_time - trip.time) * trip.num_occurrences
+            # We do not compute new routes yet (route=False), we use the existing ones
+            new_l1_error, avg_trip_error, avg_perc_error = predict_trip_times(
+                            road_map, unique_trips, route=False, proposed=True, max_speed=0)       
             
-            print("Old L1 = " + str(l1_error))
-            print("New L1 = " + str(new_l1_error))
+            if(DEBUG):
+                print("Old L1 = " + str(l1_error))
+                print("New L1 = " + str(new_l1_error))
             
             # Inner Loop Step 3 - Accept the change if it is an improvement
             if(new_l1_error < l1_error):
                 # The step decreased the error - accept it!
-                print("Accepting!")
                 for link in road_map.links:
                     link.time = link.proposed_time
                 
@@ -170,17 +251,22 @@ def estimate_travel_times(road_map, trips, max_iter=20):
                 # The step increased the error - reject it!
                 # This means we overshot - retry with a smaller step size
                 eps *= .75
-                print("Stepped too far. Decreasing eps...")
+
+    #Compute the final error metrics after the last iteration
+    new_l1_error, avg_trip_error, avg_perc_error = predict_trip_times(road_map, unique_trips, route=False, max_speed=0) 
+    iter_avg_errors.append(avg_trip_error)
+    iter_perc_errors.append(avg_perc_error)
+    # If we have a test set, also evaluate the map on it
+    if(test_set != None):
+        test_l1_error, test_avg_trip_error, test_perc_error = predict_trip_times(road_map, unique_test_trips, route=True)
+        test_avg_errors.append(test_avg_trip_error)
+        test_perc_errors.append(test_perc_error)
                 
-            
-            
+    return (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors)
 
-    plt.plot(iter_errors)
-    plt.savefig("travel_time_errors.png")
+
+
         
-    road_map.save_speeds('tmp_speeds/iteration_' + str(outer_iter + 1) + '.csv')
-
-
 
         
         

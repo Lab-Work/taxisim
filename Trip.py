@@ -44,7 +44,7 @@ class Trip:
 		#csvLine - A list, which has been parsed from a CSV data file
 	def __init__(self, csvLine):
 		#Store the actual data in case we need it later...
-		self.csvLine = csvLine
+		#self.csvLine = csvLine
 		
   		[medallion, hack_license, vendor_id, rate_code, store_and_fwd_flag, pickup_datetime, dropoff_datetime, 
                  passenger_count, trip_time_in_secs, trip_distance, pickup_longitude, pickup_latitude, 
@@ -60,7 +60,8 @@ class Trip:
 
 		duration = self.dropoff_time - self.pickup_time  #Dropoff time is used to compute duration (timedelta object)
 		self.time = int(duration.total_seconds()) #Time stores the duration as seconds
-		
+		self.dup_times = None		
+  
 		#Compute pace (if possible)
 		if(self.dist==0):
 			self.pace = 0
