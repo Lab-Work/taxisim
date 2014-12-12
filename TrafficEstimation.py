@@ -99,6 +99,8 @@ def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = 
         else:
             trip.estimated_time = sum([link.time for link in trip.path_links])
         
+        trip.estimated_dist = sum([link.length for link in trip.path_links])
+        
         # This trip may actually represent several duplicate trips (in terms of origin/destination),
         # which may have different true times - the dup_times parameter loops through these 
         for true_time in trip.dup_times:

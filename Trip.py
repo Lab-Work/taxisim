@@ -60,7 +60,11 @@ class Trip:
 
 		duration = self.dropoff_time - self.pickup_time  #Dropoff time is used to compute duration (timedelta object)
 		self.time = int(duration.total_seconds()) #Time stores the duration as seconds
-		self.dup_times = None		
+		
+		#For traffic estimation algorithm
+		self.dup_times = None
+		self.estimated_time = 0.0
+		self.estimate_distance = 0.0
   
 		#Compute pace (if possible)
 		if(self.dist==0):
