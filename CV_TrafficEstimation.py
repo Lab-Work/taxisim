@@ -45,7 +45,7 @@ def split_train_test(full_data, fold_id, num_folds):
         # (may be a subset of input due to duplicates, invalids)
 def run_fold((train, test, nodes_fn, links_fn)):
 
-    print("Running fold")
+    print("Running fold - " + str(len(train)) + " train vs. " + str(len(test)) + " test")
     # Load the map and split up the input data
     road_map = Map(nodes_fn, links_fn)
        
@@ -203,7 +203,7 @@ def perform_learning_curve(full_data, nodes_fn, links_fn, num_slices, num_cpus =
     train, test = split_train_test(full_data, 0, 8)
 
     
-    it = downsample_iterator(train, test, num_cpus, nodes_fn, links_fn)
+    it = downsample_iterator(train, test, num_slices, nodes_fn, links_fn)
     pool = Pool(num_cpus)
     output_list = pool.map(run_fold, it)
     
