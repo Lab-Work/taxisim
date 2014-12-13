@@ -71,6 +71,46 @@ def run_fold((train, test, nodes_fn, links_fn)):
     # Return everything
     return (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors, train, test)
 
+
+def run_fold_testonce((train, test, nodes_fn, links_fn)):
+    print("Running fold - " + str(len(train)) + " train vs. " + str(len(test)) + " test")
+    # Load the map and split up the input data
+    road_map = Map(nodes_fn, links_fn)
+       
+    
+    # Run the traffic estimation algorithm
+    (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors) = estimate_travel_times(
+        road_map, train, max_iter=20)
+        
+    train_avg_error= iter_avg_errors[-1]
+    train_perc_error = iter_perc_errors[-1]
+
+    unique_test = match_trips_to_nodes(road_map, trips)
+    #Check the testdata        
+    l1_error, test_avg_error, test_perc_error = predict_trip_times(road_map, unique_test,
+                                    route=True, proposed=False, max_speed = None)
+    
+
+
+    
+    # Remove the trips that were not estimated (duplicates and errors)
+    test = [trip for trip in test if trip.dup_times != None]
+    train = [trip for trip in train if trip.dup_times != None]    
+    
+    
+    # We have to reset these fields so the objects can be pickled/returned across processes
+    # Otherwise we would have to send the whole graph, because of pointers
+    for trip_lst in [test, train]:
+        for trip in trip_lst:
+            trip.origin_node = None
+            trip.dest_node = None
+            trip.path_links = None
+    
+    print("Done")
+    # Return everything
+    return (train_avg_error, train_perc_error, test_avg_error, test_perc_error, train, test)
+
+
 # Simple iterator, produces inputs for the run_fold function
 def fold_iterator(full_data, nodes_fn, links_fn, num_folds):
     for i in range(num_folds):
@@ -197,52 +237,66 @@ def downsample_iterator(train, test, num_slices, nodes_fn, links_fn):
 
 
 
-def perform_learning_curve(full_data, nodes_fn, links_fn, num_slices, num_cpus = 1):
+def perform_learning_curve(full_data, nodes_fn, links_fn, num_slices, num_folds, num_cpus = 1):
     shuffle(full_data)
     
-    train, test = split_train_test(full_data, 0, 8)
-
     
-    it = downsample_iterator(train, test, num_slices, nodes_fn, links_fn)
-    pool = Pool(num_cpus)
-    output_list = pool.map(run_fold, it)
+    overall_train_errs = [0] * num_slices
+    overall_test_errs = [0] * num_slices
     
-    train_errs = []
-    test_errs = []
-    for (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors, train, test) in output_list:
-        train_errs.append(iter_avg_errors[-1])
-        test_errs.append(test_avg_errors[-1])
+    for i in range(num_folds):
+        print("Running fold " + str(i))
+        train, test = split_train_test(full_data, 0, num_folds)
     
+        
+        it = downsample_iterator(train, test, num_slices, nodes_fn, links_fn)
+        pool = Pool(num_cpus)
+        output_list = pool.map(run_fold_testonce, it)
+        
+        train_errs = []
+        test_errs = []
+        for (train_avg_error, train_perc_error, test_avg_error, test_perc_error, train, test) in output_list:
+            train_errs.append(train_avg_error)
+            test_errs.append(test_avg_error)
+        
+        for i in range(len(overall_train_errs)):
+            overall_train_errs[i] += train_errs[i]
+            overall_test_errs[i] += test_errs[i]
+    
+    for i in range(len(overall_train_errs)):
+            overall_train_errs[i] /= num_folds
+            overall_test_errs[i] /= num_folds
+        
+        
     
     sizes = [int(float(i+1) * len(train) / num_slices) for i in range(num_slices)]
     
     plt.cla()
-    plt.plot(sizes, train_errs)
-    plt.plot(sizes, test_errs)
+    plt.plot(sizes, overall_train_errs)
+    plt.plot(sizes, overall_test_errs)
     plt.legend(["Train", "Test"])
     plt.xlabel("Training Set Size")
     plt.ylabel("Avg Absolute Error (seconds/trip)")
     plt.savefig("learning_curve.png")
     
     print("Done!")
-    
-    
-
+ 
 
 
 if(__name__=="__main__"):
     print("Loading trips")
-    trips = load_trips("sample_2.csv", 200000)
+    trips = load_trips("sample_2.csv", 20000)
     #print("We have " + str(len(trips)) + " trips")
     
     #print("Loading map")
 
     
     #perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8)
-    
-    perform_learning_curve(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 24, num_cpus=8)
+    d1 = datetime.now()
+    perform_learning_curve(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 24, num_folds=8, num_cpus=8)
+    d2 = datetime.now()
     print("Done!")
-    
+    print(d2 - d1)    
 
 
 
