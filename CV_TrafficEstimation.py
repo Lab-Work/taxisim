@@ -229,6 +229,12 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1):
 
 
 # An iterator which downsamples the training set, using more data in each iteration
+# Params:
+    # train - a list of Trips
+    # test - a list of Trips
+    # num_slices - the number of different training set sizes to use
+    # nodes_fn - the CSV filename to read Nodes from
+    # links_fn - the CSV filename to read LInks from
 def downsample_iterator(train, test, num_slices, nodes_fn, links_fn):
     for i in range(num_slices):
         cutoff_id = int(float(i+1) * len(train) / num_slices)
@@ -236,7 +242,13 @@ def downsample_iterator(train, test, num_slices, nodes_fn, links_fn):
     
 
 
-
+# Generates a learning curve, using various sizes of training sets, and ploting the error
+# Params:
+    # full_data - a list of Trips
+    # nodes_fn - the CSV filename to read Nodes from
+    # links_fn - the CSV filename to read LInks from
+    # num_slices - the number of different training set sizes to use
+    # num_folds - the K in k-fold cross validation.  REsults will be averaged across folds
 def perform_learning_curve(full_data, nodes_fn, links_fn, num_slices, num_folds, num_cpus = 1):
     shuffle(full_data)
     
