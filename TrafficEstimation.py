@@ -190,7 +190,7 @@ def compute_link_offsets(road_map, unique_trips, use_distance_weighting=False,
     # test_perc_errors - A list of average percent errors on the test set at each iteration
 def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, use_distance_weighting=False, 
                           distance_bandwidth=800.00):
-    print("Estimating traffic.  use_distance_weighting=" + str(use_distance_weighting))
+    #print("Estimating traffic.  use_distance_weighting=" + str(use_distance_weighting))
     DEBUG = False
     #Collapse identical trips    
     unique_trips = match_trips_to_nodes(road_map, trips)

@@ -49,7 +49,7 @@ def split_train_test(full_data, fold_id, num_folds):
         # (may be a subset of input due to duplicates, invalids)
 def run_fold((train, test, nodes_fn, links_fn, use_distance_weighting, distance_bandwidth)):
 
-    print("Running fold - " + str(len(train)) + " train vs. " + str(len(test)) + " test " + str(use_distance_weighting))
+    #print("Running fold - " + str(len(train)) + " train vs. " + str(len(test)) + " test " + str(use_distance_weighting))
     # Load the map and split up the input data
     road_map = Map(nodes_fn, links_fn)
        
@@ -72,7 +72,6 @@ def run_fold((train, test, nodes_fn, links_fn, use_distance_weighting, distance_
             trip.dest_node = None
             trip.path_links = None
     
-    print("Done")
     # Return everything
     return (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors, train, test)
 
@@ -111,7 +110,6 @@ def run_fold_testonce((train, test, nodes_fn, links_fn, use_distance_weighting, 
             trip.dest_node = None
             trip.path_links = None
     
-    print("Done")
     # Return everything
     return (train_avg_error, train_perc_error, test_avg_error, test_perc_error, train, test)
 
@@ -196,12 +194,12 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, use_dista
     
     
     if(use_distance_weighting):
-        fn_prefix = "dw_"
+        fn_prefix = "dw_" + str(int(distance_bandwidth)) + "_"
     else:
         fn_prefix = ""
     
-    output_trips(train_set, "results/train_trips.csv")
-    output_trips(test_set, "results/test_trips.csv")
+    output_trips(train_set, "results/" + fn_prefix + "train_trips.csv")
+    output_trips(test_set, "results/" + fn_prefix + "test_trips.csv")
     
     #Generate figures
     plt.cla()
@@ -244,7 +242,9 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, use_dista
     plt.ylabel("Percent Error")
     plt.savefig("results/" + fn_prefix + "perc_error_sorted.png")
     
-
+    print("Average train error = " + str(train_avg[-1]))
+    print("Average test error = " + str(test_avg[-1]))
+    
 
 
 # An iterator which downsamples the training set, using more data in each iteration
@@ -322,19 +322,16 @@ if(__name__=="__main__"):
     #print("Loading map")
 
     
-    #perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8)
-    d1 = datetime.now()
-    perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, use_distance_weighting=True, distance_bandwidth=800.0)    
-
-    #perform_learning_curve(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 24, num_folds=8, num_cpus=8)
-    d2 = datetime.now()
-    print("Done!")
-    print(d2 - d1)    
-    perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, use_distance_weighting=False)
-
-    d3 = datetime.now()
-    print("Done!")
-    print(d3 - d2)
+    for dist_bw in [1600,800,600,400,200,100,50,25,10]:
+        print("Performing distance weighting with bandwidth " + str(dist))
+        d1 = datetime.now()
+        perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, use_distance_weighting=True, distance_bandwidth=dist_bw)    
+    
+        #perform_learning_curve(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 24, num_folds=8, num_cpus=8)
+        d2 = datetime.now()
+        print("Done!")
+        print(d2 - d1)    
+        #perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, use_distance_weighting=False)
 
 
 
