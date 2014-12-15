@@ -127,7 +127,6 @@ def fold_iterator(full_data, nodes_fn, links_fn, num_folds, use_distance_weighti
                   distance_bandwidth=800.0):
     for i in range(num_folds):
         train, test = split_train_test(full_data, i, num_folds)
-        print use_distance_weighting
         yield (train, test, nodes_fn, links_fn, use_distance_weighting, distance_bandwidth)
 
 
@@ -172,7 +171,7 @@ def output_trips(trips, filename):
         w = csv.writer(f)
         w.writerow(['from_lat','from_lon','to_lat','to_lon','time','est_time','distance','est_distance'])
         for trip in trips:
-            line = [trip.fromLat, trip.fromLon, trip.toLat, trip.toLon, trip.time, trip.estimated_time, trip.dist*1609.34, trip.estimated_dist]
+            line = [trip.fromLat, trip.fromLon, trip.toLat, trip.toLon, trip.time, trip.estimated_time, trip.dist, trip.estimated_dist]
             w.writerow(line)
 
 # Performs a cross validation experiment, which splits the full_data into several training/test sets,

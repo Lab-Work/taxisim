@@ -53,6 +53,8 @@ class Trip:
 
   		[self.fromLon, self.fromLat, self.toLon, self.toLat, self.dist] = map(float, 
                 [pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude, trip_distance])
+  		self.dist *= 1609.34 # convert to meters
+    
   		self.pickup_time = parseUtc(pickup_datetime)
   		self.dropoff_time = parseUtc(dropoff_datetime)
 
@@ -74,7 +76,7 @@ class Trip:
 		
 	
 		#Straightline distance between pickup and dropoff coordinates		
-		self.straight_line_dist = approx_distance(self.fromLat, self.fromLon,self.toLat, self.toLon) /  1609.34
+		self.straight_line_dist = approx_distance(self.fromLat, self.fromLon,self.toLat, self.toLon)
 		
 		#Winding factor = ratio of true distance over straightline distance (typically something like 1.5)
 		if(self.straight_line_dist<=0):
@@ -137,15 +139,15 @@ class Trip:
 			return Trip.ERR_GPS
 
 		#Distance between start and end coordinates (in miles) not reasonable
-		if(self.straight_line_dist < .001):
+		if(self.straight_line_dist < .001*1609.34):
 			return Trip.ERR_LO_STRAIGHTLINE
-		if(self.straight_line_dist > 20):
+		if(self.straight_line_dist > 20*1609.34):
 			return Trip.ERR_HI_STRAIGHTLINE
 				
 		#Metered distance (in miles) not reasonable
-		if(self.dist < .001):
+		if(self.dist < .001*1609.34):
 			return Trip.ERR_LO_DIST
-		if(self.dist > 20):
+		if(self.dist > 20*1609.34):
 			return Trip.ERR_HI_DIST
 		
 		#In euclidean space, the winding factor (metered dist / straightline dist) must be >= 1
@@ -159,10 +161,10 @@ class Trip:
 		if(self.time > 7200):
 			return Trip.ERR_HI_TIME
 		
-		#Unreasonable pace (in second/mile)
-		if(self.pace < 10):
+		#Unreasonable pace (in second/meter)
+		if(self.pace < 10/1609.34):
 			return Trip.ERR_LO_PACE
-		if(self.pace > 7200):
+		if(self.pace > 7200/1609.34):
 			return Trip.ERR_HI_PACE
 		
 		
@@ -180,10 +182,10 @@ class Trip:
 			return Trip.BAD_GPS
 		
 		#Really long trips (in miles) are not representative
-		if(self.straight_line_dist > 8):
+		if(self.straight_line_dist > 8*1609.34):
 			return Trip.BAD_HI_STRAIGHTLINE
 				
-		if(self.dist > 15):
+		if(self.dist > 15*1609.34):
 			return Trip.BAD_HI_DIST
 		
 		#A high winding factor indicates that the taxi did not proceed directly to its destination
@@ -198,9 +200,9 @@ class Trip:
 			return Trip.BAD_HI_TIME
 		
 		#These speeds are technically possible, but not indicative of overall traffic
-		if(self.pace < 40):
+		if(self.pace < 40/1609.34):
 			return Trip.BAD_LO_PACE
-		if(self.pace > 3600):
+		if(self.pace > 3600/1609.34):
 			return Trip.BAD_HI_PACE
 
 		

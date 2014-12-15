@@ -60,7 +60,7 @@ def compute_avg_velocity(trips):
     s_d = 0.0
     for trip in trips:
         s_t += trip.time
-        s_d += trip.dist * 1609.34
+        s_d += trip.dist
     avg_velocity = s_d / s_t
     
     return avg_velocity
@@ -151,10 +151,11 @@ def compute_link_offsets(road_map, unique_trips, use_distance_weighting=False,
         if(use_distance_weighting):
             # If we are using distance weighting, this trip's weight depends on
             # the agreement of its distance and estimated distance
-            weight = math.e**(-((trip.estimated_dist - trip.dist)/distance_bandwidth)**2)
+            weight = math.e**(-.5 * ((trip.estimated_dist - trip.dist)**2 / (distance_bandwidth)**2) )
         else:
             weight = 1        
         
+        #print str(use_distance_weighting) + ": " + str(trip.estimated_dist) + " - " + str(trip.dist) + " --> " + str(weight)
         for true_time in trip.dup_times:
             if(trip.estimated_time > true_time):
                 for link in trip.path_links:
@@ -242,7 +243,8 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, use_dista
         
         
         #Determine which links need to increase or decrease their travel time
-        compute_link_offsets(road_map, unique_trips)
+        compute_link_offsets(road_map, unique_trips, use_distance_weighting=use_distance_weighting,
+                             distance_bandwidth=distance_bandwidth)
         
         
         
