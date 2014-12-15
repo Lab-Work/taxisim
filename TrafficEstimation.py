@@ -10,6 +10,7 @@ from Map import Map
 from datetime import datetime
 import csv
 from matplotlib import pyplot as plt
+import math
 
 MAX_SPEED = 30
 
@@ -79,15 +80,21 @@ def compute_avg_velocity(trips):
     # proposed - if True, link.proposed_time will be used as the cost instead of link.time
     # max_speed - the maximum speed of any Link.  Will be computed if None (a little costly).
         # This is used by the A* heuristic - only important if route=True
+    # use_distance_weighting - Changes the error metric.  If True, trips which disagree
+        # on distance and estimated_distance get a lower weight in the error metric
+    # distance_bandwidth - Used if distance_weighting=True.  We use a Gaussian kernel
+        # to weight trips, and this value determines the standard deviation.
 # Returns:
-    # l1_error - the total absolute error of all trips
+    # l1_error - the value of the error metric (which we are trying to minimize)
     # avg_trip_error - average absolute error across all trips
     # avg_perc_error - average percent error across all trips
-def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = None):
+def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = None,
+                       use_distance_weighting=False, distance_bandwidth=800.00):
     if(max_speed==None):
         max_speed = road_map.get_max_speed()
     
-    l1_error = 0
+    error = 0.0
+    l1_error = 0.0
     avg_perc_error = 0
     num_trips = 0
     for trip in trips:
@@ -105,14 +112,57 @@ def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = 
         # which may have different true times - the dup_times parameter loops through these 
         for true_time in trip.dup_times:
             l1_error += abs(trip.estimated_time - true_time)
+            
+            if(use_distance_weighting):
+                #If we are using distance weighting, compute weight with Gaussian kernel
+                weight = math.e**(-((trip.estimated_dist - trip.dist)/distance_bandwidth)**2)
+                error += abs(trip.estimated_time - true_time) * weight
+            else:
+                #If we are not using distance weighting, just use the l1 error
+                error = l1_error
+                
             avg_perc_error +=  (abs(trip.estimated_time - true_time) / true_time)
             num_trips +=  1
     
     avg_perc_error /= num_trips
     avg_trip_error = l1_error / num_trips
-    return l1_error, avg_trip_error, avg_perc_error
+    return error, avg_trip_error, avg_perc_error
         
+# Compute link offsets based on trip time errors.  Link offsets indicate whether
+# this link's travel time should increase or decrease, in order to decrease the 
+# error metric.  The sign of link offset should be the same as the sign of the
+# derivative of the error function with respect to this link's cost.
+# Params:
+    # road_map - a Map object
+    # unique_trips - a list of Trip objects
+    # use_distance_weighting - Changes the error metric.  If True, trips which disagree
+        # on distance and estimated_distance get a lower weight in the error metric
+    # distance_bandwidth - Used if distance_weighting=True.  We use a Gaussian kernel
+        # to weight trips, and this value determines the standard deviation.
+def compute_link_offsets(road_map, unique_trips, use_distance_weighting=False,
+                            distance_bandwidth=800.00):
+    #Start offsets at 0
+    for link in road_map.links:
+        link.offset = 0
+    
+    # If we overestimate, increase link offsets
+    # If we underestimate, decrease link offsets
+    for trip in unique_trips:
+        if(use_distance_weighting):
+            # If we are using distance weighting, this trip's weight depends on
+            # the agreement of its distance and estimated distance
+            weight = math.e**(-((trip.estimated_dist - trip.dist)/distance_bandwidth)**2)
+        else:
+            weight = 1        
         
+        for true_time in trip.dup_times:
+            if(trip.estimated_time > true_time):
+                for link in trip.path_links:
+                    link.offset += weight
+            elif(trip.estimated_time < true_time):
+                for link in trip.path_links:
+                    link.offset -= weight
+    
 
 
 
@@ -128,12 +178,18 @@ def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = 
     # trips - a list of Trip objects.
     # max_iter - maximum number of iterations before the experiment ends
     # test_set - an optional hold-out test set to assess how well the model generalizes.
+    # use_distance_weighting - Changes the error metric.  If True, trips which disagree
+        # on distance and estimated_distance get a lower weight in the error metric
+    # distance_bandwidth - Used if distance_weighting=True.  We use a Gaussian kernel
+        # to weight trips, and this value determines the standard deviation.
 # Returns:
     # iter_avg_errors - A list of the average absolute errors at each iteration
     # iter_perc_errors - A list of average percent errors at each iteration
     # test_avg_errors - A list of average absolute errors on the test set at each iteration
     # test_perc_errors - A list of average percent errors on the test set at each iteration
-def estimate_travel_times(road_map, trips, max_iter=20, test_set=None):
+def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, use_distance_weighting=False, 
+                          distance_bandwidth=800.00):
+    print("Estimating traffic.  use_distance_weighting=" + str(use_distance_weighting))
     DEBUG = False
     #Collapse identical trips    
     unique_trips = match_trips_to_nodes(road_map, trips)
@@ -161,13 +217,7 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None):
         if(DEBUG):
             print("################## OUTER LOOP " + str(outer_iter) + " ######################")
         
-        # For each link, we maintain the offset value
-        # Which is the number of overestimated minus underestimated travel times
-        # Of trips which use this link
-        for link in road_map.links:
-            link.offset = 0 #Initially we have 0 overestimated and underestimated
-            link.proposed_time = link.time
-        
+
         
         t1 = datetime.now()
         max_speed = road_map.get_max_speed()
@@ -177,28 +227,22 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None):
         # Determine optimal routes for all trips, and predict the travel times
         # This is the most costly part of each iteration
         # l1_error stores the sum of all absolute errors
-        l1_error, avg_trip_error, avg_perc_error = predict_trip_times(road_map, unique_trips, route=True)
+        error_metric, avg_trip_error, avg_perc_error = predict_trip_times(road_map,
+                unique_trips, route=True, use_distance_weighting=use_distance_weighting,
+                distance_bandwidth=distance_bandwidth)
         iter_avg_errors.append(avg_trip_error)
         iter_perc_errors.append(avg_perc_error)
         
         # If we have a test set, also evaluate the map on it
         if(test_set != None):
-            test_l1_error, test_avg_trip_error, test_perc_error = predict_trip_times(road_map, unique_test_trips, route=True)
+            test_l1_error, test_avg_trip_error, test_perc_error = predict_trip_times(
+                road_map, unique_test_trips, route=True)
             test_avg_errors.append(test_avg_trip_error)
             test_perc_errors.append(test_perc_error)
         
-        # Compute link offsets based on trip time errors
-        # If we overestimate, increase link offsets
-        # If we underestimate, decrease link offsets
-        for trip in unique_trips:
-            for true_time in trip.dup_times:
-                if(trip.estimated_time > true_time):
-                    for link in trip.path_links:
-                        link.offset += trip.num_occurrences
-                elif(trip.estimated_time < true_time):
-                    for link in trip.path_links:
-                        link.offset -= trip.num_occurrences
-            
+        
+        #Determine which links need to increase or decrease their travel time
+        compute_link_offsets(road_map, unique_trips)
         
         
         
@@ -225,6 +269,8 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None):
                     link.proposed_time = link.time / (1 + eps)
                 elif(link.offset < 0):
                     link.proposed_time = link.time * (1 + eps)
+                else:
+                    link.proposed_time = link.time
                 
                 #Constrain the travel time to a physically realistic value
                 link.proposed_time = max(link.proposed_time, link.length/MAX_SPEED)
@@ -233,15 +279,16 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None):
             # Inner Loop Step 2 - Evaluate proposed travel times in terms of L1 error
             # Use routes to predict travel times for trips
             # We do not compute new routes yet (route=False), we use the existing ones
-            new_l1_error, avg_trip_error, avg_perc_error = predict_trip_times(
-                            road_map, unique_trips, route=False, proposed=True, max_speed=0)       
-            
+            new_error_metric, avg_trip_error, avg_perc_error = predict_trip_times(
+                            road_map, unique_trips, route=False, proposed=True, max_speed=0,
+                            use_distance_weighting=use_distance_weighting,
+                            distance_bandwidth=distance_bandwidth)            
             if(DEBUG):
-                print("Old L1 = " + str(l1_error))
-                print("New L1 = " + str(new_l1_error))
+                print("Old L1 = " + str(error_metric))
+                print("New L1 = " + str(new_error_metric))
             
             # Inner Loop Step 3 - Accept the change if it is an improvement
-            if(new_l1_error < l1_error):
+            if(new_error_metric < error_metric):
                 # The step decreased the error - accept it!
                 for link in road_map.links:
                     link.time = link.proposed_time
@@ -255,7 +302,7 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None):
                 eps *= .75
 
     #Compute the final error metrics after the last iteration
-    new_l1_error, avg_trip_error, avg_perc_error = predict_trip_times(road_map, unique_trips, route=False, max_speed=0) 
+    error_metric, avg_trip_error, avg_perc_error = predict_trip_times(road_map, unique_trips, route=False, max_speed=0) 
     iter_avg_errors.append(avg_trip_error)
     iter_perc_errors.append(avg_perc_error)
     # If we have a test set, also evaluate the map on it

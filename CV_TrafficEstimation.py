@@ -34,6 +34,10 @@ def split_train_test(full_data, fold_id, num_folds):
     # test - a list of Trips, which will be used as the test set
     # nodes_fn - the CSV filename that contains the nodes
     # links_fn - the CSV filename that contains the links
+    # use_distance_weighting - Changes the error metric.  If True, trips which disagree
+        # on distance and estimated_distance get a lower weight in the error metric
+    # distance_bandwidth - Used if distance_weighting=True.  We use a Gaussian kernel
+        # to weight trips, and this value determines the standard deviation.
 # Returns:
     # iter_avg_errors - a list of average absolute training errors at each iteration
     # iter_perc_errors - a list of average percent trainingerrors at each iteration
@@ -43,16 +47,17 @@ def split_train_test(full_data, fold_id, num_folds):
         # (may be a subset of input due to duplicates, invalids)
     # train - the modified Trip objects from the test set, now with .estimated_time attribute
         # (may be a subset of input due to duplicates, invalids)
-def run_fold((train, test, nodes_fn, links_fn)):
+def run_fold((train, test, nodes_fn, links_fn, use_distance_weighting, distance_bandwidth)):
 
-    print("Running fold - " + str(len(train)) + " train vs. " + str(len(test)) + " test")
+    print("Running fold - " + str(len(train)) + " train vs. " + str(len(test)) + " test " + str(use_distance_weighting))
     # Load the map and split up the input data
     road_map = Map(nodes_fn, links_fn)
        
     
     # Run the traffic estimation algorithm
     (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors) = estimate_travel_times(
-        road_map, train, max_iter=20, test_set=test)
+        road_map, train, max_iter=20, test_set=test, use_distance_weighting=use_distance_weighting,
+        distance_bandwidth=distance_bandwidth)
     
     # Remove the trips that were not estimated (duplicates and errors)
     test = [trip for trip in test if trip.dup_times != None]
@@ -72,7 +77,7 @@ def run_fold((train, test, nodes_fn, links_fn)):
     return (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors, train, test)
 
 
-def run_fold_testonce((train, test, nodes_fn, links_fn)):
+def run_fold_testonce((train, test, nodes_fn, links_fn, use_distance_weighting, distance_bandwidth)):
     print("Running fold - " + str(len(train)) + " train vs. " + str(len(test)) + " test")
     # Load the map and split up the input data
     road_map = Map(nodes_fn, links_fn)
@@ -112,10 +117,18 @@ def run_fold_testonce((train, test, nodes_fn, links_fn)):
 
 
 # Simple iterator, produces inputs for the run_fold function
-def fold_iterator(full_data, nodes_fn, links_fn, num_folds):
+    # Params:
+
+    # use_distance_weighting - Changes the error metric.  If True, trips which disagree
+        # on distance and estimated_distance get a lower weight in the error metric
+    # distance_bandwidth - Used if distance_weighting=True.  We use a Gaussian kernel
+        # to weight trips, and this value determines the standard deviation.
+def fold_iterator(full_data, nodes_fn, links_fn, num_folds, use_distance_weighting=False,
+                  distance_bandwidth=800.0):
     for i in range(num_folds):
-        train, test = split_train_test(full_data, fold_id, num_folds) 
-        yield (train, test, nodes_fn, links_fn, i, num_folds)
+        train, test = split_train_test(full_data, i, num_folds)
+        print use_distance_weighting
+        yield (train, test, nodes_fn, links_fn, use_distance_weighting, distance_bandwidth)
 
 
 # Takes a list of list, and produces an average list (by averaging the inner lists)
@@ -171,18 +184,25 @@ def output_trips(trips, filename):
     # links_fn - the CSV filename to read the graph's Links from
     # num_fold - the K in k-fold cross validation
     # num_cpus - Will run this many folds in parallel
-def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1):
+def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, use_distance_weighting=False,
+               distance_bandwidth=800.0):
     from matplotlib import pyplot as plt
     shuffle(full_data)
 
-    it = fold_iterator(full_data, nodes_fn, links_fn, num_folds)
+    it = fold_iterator(full_data, nodes_fn, links_fn, num_folds, use_distance_weighting=use_distance_weighting,
+                        distance_bandwidth=distance_bandwidth)
     pool = Pool(num_cpus)
-    output_list = pool.map(run_fold, it)
+    output_list = map(run_fold, it)
     (train_avg, train_perc, test_avg, test_perc, train_set, test_set) = combine_outputs(output_list)
     
     
-    output_trips(train_set, "train_trips.csv")
-    output_trips(test_set, "test_trips.csv")
+    if(use_distance_weighting):
+        fn_prefix = "dw_"
+    else:
+        fn_prefix = ""
+    
+    output_trips(train_set, "results/train_trips.csv")
+    output_trips(test_set, "results/test_trips.csv")
     
     #Generate figures
     plt.cla()
@@ -191,7 +211,7 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1):
     plt.legend(["Train", "Test"])
     plt.xlabel("Iteration")
     plt.ylabel("Avg Absolute Error (seconds/trip)")
-    plt.savefig("avg_error.png")
+    plt.savefig("results/" + fn_prefix + "avg_error.png")
     
     plt.cla()
     plt.plot(train_perc)
@@ -199,7 +219,7 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1):
     plt.legend(["Train", "Test"])
     plt.xlabel("Iteration")
     plt.ylabel("Avg Relative Error")
-    plt.savefig("perc_error.png")
+    plt.savefig("results/" + fn_prefix + "perc_error.png")
     
     plt.cla()
     plt.scatter([trip.time for trip in train_set], [trip.estimated_time for trip in train_set], color="blue")
@@ -207,7 +227,7 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1):
     plt.xlabel("True Time")
     plt.ylabel("Estimated Time")
     plt.legend(["Train", "Test"])
-    plt.savefig("time_scatter.png")
+    plt.savefig("results/" + fn_prefix + "time_scatter.png")
     
     plt.cla()
     plt.plot(sorted([abs(trip.time-trip.estimated_time) for trip in train_set]))
@@ -215,7 +235,7 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1):
     plt.xlabel("Trip Rank")
     plt.ylabel("Absolute Error")
     plt.legend(["Train", "Test"])
-    plt.savefig("abs_error_sorted.png")
+    plt.savefig("results/" + fn_prefix + "abs_error_sorted.png")
     
     plt.cla()
     plt.plot(sorted([abs(trip.time-trip.estimated_time)/trip.time for trip in train_set]))
@@ -223,7 +243,7 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1):
     plt.legend(["Train", "Test"])
     plt.xlabel("Trip Rank")
     plt.ylabel("Percent Error")
-    plt.savefig("perc_error_sorted.png")
+    plt.savefig("results/" + fn_prefix + "perc_error_sorted.png")
     
 
 
@@ -305,11 +325,17 @@ if(__name__=="__main__"):
     
     #perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8)
     d1 = datetime.now()
-    perform_learning_curve(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 24, num_folds=8, num_cpus=8)
+    perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, use_distance_weighting=True, distance_bandwidth=800.0)    
+
+    #perform_learning_curve(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 24, num_folds=8, num_cpus=8)
     d2 = datetime.now()
     print("Done!")
     print(d2 - d1)    
+    perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, use_distance_weighting=False)
 
+    d3 = datetime.now()
+    print("Done!")
+    print(d3 - d2)
 
 
 
