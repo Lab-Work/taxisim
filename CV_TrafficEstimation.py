@@ -184,7 +184,7 @@ def output_trips(trips, filename):
 def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, use_distance_weighting=False,
                distance_bandwidth=800.0):
     from matplotlib import pyplot as plt
-    shuffle(full_data)
+    # shuffle(full_data)
 
     it = fold_iterator(full_data, nodes_fn, links_fn, num_folds, use_distance_weighting=use_distance_weighting,
                         distance_bandwidth=distance_bandwidth)
@@ -317,6 +317,7 @@ def perform_learning_curve(full_data, nodes_fn, links_fn, num_slices, num_folds,
 if(__name__=="__main__"):
     print("Loading trips")
     trips = load_trips("sample_2.csv", 20000)
+    shuffle(trips)
     #print("We have " + str(len(trips)) + " trips")
     
     #print("Loading map")
