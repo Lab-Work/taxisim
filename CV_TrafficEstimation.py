@@ -324,7 +324,7 @@ if(__name__=="__main__"):
 
     
     for dist_bw in [1600,800,600,400,200,100,50,25,10]:
-        print("Performing distance weighting with bandwidth " + str(dist))
+        print("Performing distance weighting with bandwidth " + str(dist_bw))
         d1 = datetime.now()
         perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, use_distance_weighting=True, distance_bandwidth=dist_bw)    
     
