@@ -192,7 +192,7 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, use_dista
     it = fold_iterator(full_data, nodes_fn, links_fn, num_folds, use_distance_weighting=use_distance_weighting,
                         distance_bandwidth=distance_bandwidth)
     pool = Pool(num_cpus)
-    output_list = map(run_fold, it)
+    output_list = pool.map(run_fold, it)
     (train_avg, train_perc, test_avg, test_perc, train_set, test_set) = combine_outputs(output_list)
     
     
