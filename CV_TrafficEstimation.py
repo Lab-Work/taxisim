@@ -283,7 +283,7 @@ def perform_learning_curve(full_data, nodes_fn, links_fn, num_slices, num_folds,
         it = downsample_iterator(train, test, num_slices, nodes_fn, links_fn)
         pool = Pool(num_cpus)
         output_list = pool.map(run_fold_testonce, it)
-        pool.close()
+        pool.terminate()
         
         train_errs = []
         test_errs = []
