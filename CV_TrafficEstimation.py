@@ -191,6 +191,7 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, use_dista
     pool = Pool(num_cpus)
     output_list = pool.map(run_fold, it)
     (train_avg, train_perc, test_avg, test_perc, train_set, test_set) = combine_outputs(output_list)
+    pool.terminate()
     
     
     if(use_distance_weighting):
