@@ -2,8 +2,10 @@
 class Link:
     def __init__(self, begin_node_id, end_node_id, length, speed=10):
         self.origin_node_id = int(begin_node_id)
-        self.end_node_id = int(end_node_id)
+        self.connecting_node_id = int(end_node_id)
         self.length = float(length)
         self.time = float(length) / float(speed)
         self.origin_node = None
         self.connecting_node = None
+        
+        self.link_id = 0

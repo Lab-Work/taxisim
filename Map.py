@@ -2,6 +2,8 @@ from KDTree import KDTree
 import csv
 from Node import Node
 from Link import Link
+from Trip import Trip
+from BiDirectionalSearch import *
 
 # Represents a roadmap, has a set of Nodes and Links
 
@@ -132,6 +134,11 @@ class Map:
             links_fn,
             lookup_kd_size=1,
             region_kd_size=1000):
+        
+        #Save the filenames for future reference
+        self.nodes_fn = nodes_fn
+        self.links_fn = links_fn
+        
         self.nodes = []  # A list of all Nodes
         self.nodes_by_id = {}  # Maps integer node_ids to Node objects
         self.links = []  # A list of all Links
@@ -221,10 +228,88 @@ class Map:
                     self.links.append(link)
                     self.links_by_node_id[begin_node_id, end_node_id] = link
 
+        for i in xrange(len(self.links)):
+            self.links[i].link_id = i
+
         # Finally, index nodes using KD Trees
         self.region_kd_tree = KDTree(self.nodes, leaf_size=region_kd_size)
         self.lookup_kd_tree = KDTree(self.nodes, leaf_size=lookup_kd_size)
-
+    
+    
+    # Matches a list of Trips to their nearest intersections (Nodes) in this Map
+    # Upon completion, each trip will have .origin_node and .dest_node attributes
+    # For efficiency, duplicates (some orig/dest) are also removed - although the Trips
+    # are edited "in place", this function still returns a subset of them.  The trip.dup_times
+    # attribute is set, which
+    # Params:
+        # trips - a list of Trip objects to be map-matched
+    def match_trips_to_nodes(self, trips):
+        trip_lookup = {} # lookup a trip by origin, destination nodes
+        
+        #First find the nearest origin/destination nodes for each trip
+        #We will also find duplicate trips (same origin,destination nodes)
+        for trip in trips:
+            if(trip.isValid() == Trip.VALID):
+                trip.num_occurrences = 1
+                trip.origin_node = self.get_nearest_node(trip.fromLat, trip.fromLon)
+                trip.dest_node = self.get_nearest_node(trip.toLat, trip.toLon)
+                
+                if((trip.origin_node, trip.dest_node) in trip_lookup):
+                    #Already seen this trip at least once
+                    trip_lookup[trip.origin_node, trip.dest_node].num_occurrences += 1
+                    trip_lookup[trip.origin_node, trip.dest_node].dup_times.append(trip.time)
+                    trip.dup_times = None
+                elif trip.origin_node !=None and trip.dest_node != None:
+                    #Never seen this trip before
+                    trip_lookup[trip.origin_node, trip.dest_node] = trip
+                    trip_lookup[trip.origin_node, trip.dest_node].dup_times = [trip.time]
+    
+        
+        #Make unique trips into a list and return
+        new_trips = [trip_lookup[key] for key in trip_lookup]
+        return new_trips
+    
+    # Replaces references on Node and Link objects with id numbers.  This way the graph can be pickled
+    # and, for example, sent to a worker process
+    def flatten(self):
+        for node in self.nodes:
+            if(node.forward_links!= None):
+                node.forward_link_ids = [link.link_id for link in node.forward_links]
+                node.backward_link_ids = [link.link_id for link in node.backward_links]
+                node.forward_links = None
+                link.backward_links = None
+        
+        for link in self.links:
+            link.origin_node_id = link.origin_node.node_id
+            link.connecting_node_id = link.connecting_node.node_id
+            link.origin_node = None
+            link.connecting_node = None
+    
+    # Reverses the flatten() operation, rebuilding the references between Node and Link objects
+    # from id numbers
+    def unflatten(self):
+        for node in self.nodes:
+            if(node.forward_link_ids != None):
+                node.forward_links = [self.links[_id] for _id in node.forward_link_ids]
+                node.backward_links = [self.links[_id] for _id in node.backward_link_ids]
+        
+        for link in self.links:
+            link.origin_node = self.nodes_by_id[link.origin_node_id]
+            link.connecting_node = self.nodes_by_id[link.connecting_node_id]
+            
+    
+    
+    def routeTrips(self, trips, num_cpus = 1, max_speed=None):
+        if(max_speed==None):
+            max_speed = self.get_max_speed()
+        
+        if(num_cpus <= 1):
+            #Don't use parallel processing - just route all of the trips
+            for trip in trips:
+                trip.path_links = bidirectional_search(trip.origin_node, trip.dest_node, use_astar=True, max_speed=max_speed)
+        else:
+            #Use parallel processing - split the trips into chunks
+            pass
 
 # A simple test that tries various leaf_sizes for the lookup_kd_tree
 # Turns out smaller is always better
@@ -313,6 +398,23 @@ def test_region_ids():
             print "===" + str(link.origin_node.region_id)
         print
 
+def test_flatten():
+    print("Loading")
+    d1 = datetime.now()
+    nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv")
+    d2 = datetime.now()
+    print(d2 - d1)
+    print("Flattening")
+    nyc_map.flatten()
+    d3 = datetime.now()
+    print(d3 - d2)
+    print("Unflattening")
+    nyc_map.unflatten()
+    d4 = datetime.now()
+    print(d4 - d3)
+    
+
 if(__name__ == "__main__"):
     # benchmark_node_lookup()
-    test_region_ids()
+    #test_region_ids()
+    test_flatten()

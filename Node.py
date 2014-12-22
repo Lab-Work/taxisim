@@ -40,6 +40,8 @@ class Node:
         # node and their weights
         self.forward_links = []
         self.backward_links = []
+        self.forward_link_ids = []
+        self.backward_link_ids = []
 
         self.is_forward_arc_flags = {}
         self.is_backward_arc_flags = {}
