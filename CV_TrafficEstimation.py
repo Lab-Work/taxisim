@@ -32,12 +32,8 @@ def split_train_test(full_data, fold_id, num_folds):
 # Params: Note that this is passed as a single tuple
     # train - a list of Trips, which will be used as the training set
     # test - a list of Trips, which will be used as the test set
-    # nodes_fn - the CSV filename that contains the nodes
-    # links_fn - the CSV filename that contains the links
-    # use_distance_weighting - Changes the error metric.  If True, trips which disagree
-        # on distance and estimated_distance get a lower weight in the error metric
-    # distance_bandwidth - Used if distance_weighting=True.  We use a Gaussian kernel
-        # to weight trips, and this value determines the standard deviation.
+    # road_map - a Map object containing the road network.  Should already be flatten()'ed
+    # distance_weighting - the method for computing the weight.  see compute_weight()
 # Returns:
     # iter_avg_errors - a list of average absolute training errors at each iteration
     # iter_perc_errors - a list of average percent trainingerrors at each iteration
@@ -47,17 +43,16 @@ def split_train_test(full_data, fold_id, num_folds):
         # (may be a subset of input due to duplicates, invalids)
     # train - the modified Trip objects from the test set, now with .estimated_time attribute
         # (may be a subset of input due to duplicates, invalids)
-def run_fold((train, test, nodes_fn, links_fn, use_distance_weighting, distance_bandwidth)):
+def run_fold((train, test, road_map, distance_weighting)):
 
     #print("Running fold - " + str(len(train)) + " train vs. " + str(len(test)) + " test " + str(use_distance_weighting))
-    # Load the map and split up the input data
-    road_map = Map(nodes_fn, links_fn)
+    # Prepare the map for use
+    road_map.unflatten()
        
     
     # Run the traffic estimation algorithm
     (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors) = estimate_travel_times(
-        road_map, train, max_iter=20, test_set=test, use_distance_weighting=use_distance_weighting,
-        distance_bandwidth=distance_bandwidth)
+        road_map, train, max_iter=20, test_set=test, distance_weighting=distance_weighting)
     
     # Remove the trips that were not estimated (duplicates and errors)
     test = [trip for trip in test if trip.dup_times != None]
@@ -76,10 +71,10 @@ def run_fold((train, test, nodes_fn, links_fn, use_distance_weighting, distance_
     return (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors, train, test)
 
 
-def run_fold_testonce((train, test, nodes_fn, links_fn, use_distance_weighting, distance_bandwidth)):
+def run_fold_testonce((train, test, road_map, use_distance_weighting, distance_bandwidth)):
     print("Running fold - " + str(len(train)) + " train vs. " + str(len(test)) + " test")
     # Load the map and split up the input data
-    road_map = Map(nodes_fn, links_fn)
+    road_map.unflatten()
        
     
     # Run the traffic estimation algorithm
@@ -116,16 +111,12 @@ def run_fold_testonce((train, test, nodes_fn, links_fn, use_distance_weighting, 
 
 # Simple iterator, produces inputs for the run_fold function
     # Params:
-
-    # use_distance_weighting - Changes the error metric.  If True, trips which disagree
-        # on distance and estimated_distance get a lower weight in the error metric
-    # distance_bandwidth - Used if distance_weighting=True.  We use a Gaussian kernel
-        # to weight trips, and this value determines the standard deviation.
-def fold_iterator(full_data, nodes_fn, links_fn, num_folds, use_distance_weighting=False,
-                  distance_bandwidth=800.0):
+    # road_map - a Map object containing the road network.
+    # distance_weighting - the method for computing the weight.  see compute_weight()
+def fold_iterator(full_data, road_map,  num_folds, distance_weighting=None):
     for i in range(num_folds):
         train, test = split_train_test(full_data, i, num_folds)
-        yield (train, test, nodes_fn, links_fn, use_distance_weighting, distance_bandwidth)
+        yield (train, test, road_map, distance_weighting)
 
 
 # Takes a list of list, and produces an average list (by averaging the inner lists)
@@ -181,23 +172,21 @@ def output_trips(trips, filename):
     # links_fn - the CSV filename to read the graph's Links from
     # num_fold - the K in k-fold cross validation
     # num_cpus - Will run this many folds in parallel
-def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, use_distance_weighting=False,
-               distance_bandwidth=800.0):
+    # distance_weighting - the method for computing the weight.  see compute_weight()
+def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, distance_weighting=None):
     from matplotlib import pyplot as plt
     # shuffle(full_data)
 
-    it = fold_iterator(full_data, nodes_fn, links_fn, num_folds, use_distance_weighting=use_distance_weighting,
-                        distance_bandwidth=distance_bandwidth)
+    road_map = Map(nodes_fn, links_fn)
+    road_map.flatten()
+    it = fold_iterator(full_data, road_map, num_folds, distance_weighting=distance_weighting)
     pool = Pool(num_cpus)
     output_list = pool.map(run_fold, it)
     (train_avg, train_perc, test_avg, test_perc, train_set, test_set) = combine_outputs(output_list)
     pool.terminate()
     
     
-    if(use_distance_weighting):
-        fn_prefix = "dw_" + str(int(distance_bandwidth)) + "_"
-    else:
-        fn_prefix = ""
+    fn_prefix = dw_string(distance_weighting)
     
     output_trips(train_set, "results/" + fn_prefix + "train_trips.csv")
     output_trips(test_set, "results/" + fn_prefix + "test_trips.csv")
@@ -316,6 +305,25 @@ def perform_learning_curve(full_data, nodes_fn, links_fn, num_slices, num_folds,
  
 
 
+def dw_string(distance_weighting):
+    (val_type, kern_type, dist_bw) = distance_weighting
+    if(val_type==DW_ABS):
+        s = "ABS"
+    else:
+        s = "REL"
+    
+    if(kern_type==DW_GAUSS):
+        s += "_GAUSS_"
+    elif(kern_type==DW_LASSO):
+        s += "_LASSO_"
+    else:
+        s += "_THRESH_"
+
+    s += str(dist_bw)
+    
+    return s
+
+
 if(__name__=="__main__"):
     print("Loading trips")
     trips = load_trips("sample_2.csv", 20000)
@@ -325,16 +333,23 @@ if(__name__=="__main__"):
     #print("Loading map")
 
     
-    for dist_bw in [1600,800,600,400,200,100,50,25,10]:
-        print("Performing distance weighting with bandwidth " + str(dist_bw))
-        d1 = datetime.now()
-        perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, use_distance_weighting=True, distance_bandwidth=dist_bw)    
-    
-        #perform_learning_curve(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 24, num_folds=8, num_cpus=8)
-        d2 = datetime.now()
-        print("Done!")
-        print(d2 - d1)    
-        #perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, use_distance_weighting=False)
+    for val_type in [DW_ABS, DW_REL]:
+        for kern_type in [DW_GAUSS, DW_LASSO, DW_THRESH]:
+            if(val_type==DW_ABS):
+                bandwidths = [1600,800,600,400,200,100,50,25,10]
+            else:
+                bandwidths = [.1, .2, .3, .4, .5, .1, .15, .2,.25, .3, .5]
+                
+            for dist_bw in bandwidths:
+                print("Performing distance weighting " + dw_string((val_type, kern_type, dist_bw)))
+                d1 = datetime.now()
+                perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, distance_weighting=(val_type, kern_type, dist_bw))    
+            
+                #perform_learning_curve(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 24, num_folds=8, num_cpus=8)
+                d2 = datetime.now()
+                print("Done!")
+                print(d2 - d1)    
+                #perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, use_distance_weighting=False)
 
 
 
