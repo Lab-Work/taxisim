@@ -9,6 +9,17 @@ from random import shuffle
 from multiprocessing import Pool
 import csv
 
+
+
+
+
+
+
+
+LEARNING_CURVE_SIZES = [5,10,20,30,40,50,100,200,300,400,500,1000,2000,3000,4000,5000,10000,15000]
+
+
+
 # Splits a list into a training set and a test set
 # Params:
     # full_data - a list of Trips.  Should already be shuffled
@@ -71,42 +82,51 @@ def run_fold((train, test, road_map, distance_weighting)):
     return (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors, train, test)
 
 
-def run_fold_testonce((train, test, road_map, use_distance_weighting, distance_bandwidth)):
-    print("Running fold - " + str(len(train)) + " train vs. " + str(len(test)) + " test")
-    # Load the map and split up the input data
+
+
+# Represents one fold in a learning curve experiment
+# With a fixed test set, uses incrementally larger training sets and reports the performance
+# Params: - the output from fold_iterator()
+    # train - a list of trips
+    # test - a list of trips
+    # road_map - a Map object, can be flattened
+    # distance_weighting - see TrafficEstimation.compute_weight()
+def run_fold_learning_curve((train, test, road_map, distance_weighting)):
     road_map.unflatten()
-       
     
-    # Run the traffic estimation algorithm
-    (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors) = estimate_travel_times(
-        road_map, train, max_iter=20)
+    
+    
+    unique_test = road_map.match_trips_to_nodes(test)
+
+    train_avg_errors = []
+    test_avg_errors = []
+    
+    for size in LEARNING_CURVE_SIZES:
+        samp_train = train[:size]
         
-    train_avg_error= iter_avg_errors[-1]
-    train_perc_error = iter_perc_errors[-1]
-
-    unique_test = match_trips_to_nodes(road_map, trips)
-    #Check the testdata        
-    l1_error, test_avg_error, test_perc_error = predict_trip_times(road_map, unique_test,
+        d1 = datetime.now()
+        print( "Training model of size " + str(len(samp_train))) 
+        (iter_avg_errors, iter_perc_errors, _, test_perc_errors) = estimate_travel_times(
+            road_map, samp_train, max_iter=20)
+        d2 = datetime.now()
+        train_avg_error= iter_avg_errors[-1]
+        print ("Finished after " + str(d2 - d1))
+        print("Testing model of size " + str(len(samp_train)) + " on " + str(len(unique_test)) + " test trips")
+        l1_error, test_avg_error, test_perc_error = predict_trip_times(road_map, unique_test,
                                     route=True, proposed=False, max_speed = None)
+        d3 = datetime.now()
+        print("Finished testing model of size " + str(size) + " after " + str(d3 - d2))
+        print((train_avg_error, test_avg_error))        
+        
+        
+        
+        train_avg_errors.append(train_avg_error)
+        test_avg_errors.append(test_avg_error)
     
+    return train_avg_errors, test_avg_errors
+        
+        
 
-
-    
-    # Remove the trips that were not estimated (duplicates and errors)
-    test = [trip for trip in test if trip.dup_times != None]
-    train = [trip for trip in train if trip.dup_times != None]    
-    
-    
-    # We have to reset these fields so the objects can be pickled/returned across processes
-    # Otherwise we would have to send the whole graph, because of pointers
-    for trip_lst in [test, train]:
-        for trip in trip_lst:
-            trip.origin_node = None
-            trip.dest_node = None
-            trip.path_links = None
-    
-    # Return everything
-    return (train_avg_error, train_perc_error, test_avg_error, test_perc_error, train, test)
 
 
 # Simple iterator, produces inputs for the run_fold function
@@ -251,51 +271,47 @@ def downsample_iterator(train, test, num_slices, nodes_fn, links_fn):
     
 
 
+
+def combine_learning_curves(output_list):
+    full_train_err_list = [0]*len(LEARNING_CURVE_SIZES)
+    full_test_err_list = [0]*len(LEARNING_CURVE_SIZES)
+    
+    for train_err_list, test_err_list in output_list:
+
+        for i in range(len(LEARNING_CURVE_SIZES)):
+            full_train_err_list[i] += train_err_list[i]
+            full_test_err_list[i] += test_err_list[i]
+    
+    for i in range(len(LEARNING_CURVE_SIZES)):
+        full_train_err_list[i] /= len(LEARNING_CURVE_SIZES)
+        full_test_err_list[i] /= len(LEARNING_CURVE_SIZES)
+
+    return full_train_err_list, full_test_err_list
+
 # Generates a learning curve, using various sizes of training sets, and ploting the error
 # Params:
     # full_data - a list of Trips
     # nodes_fn - the CSV filename to read Nodes from
     # links_fn - the CSV filename to read LInks from
-    # num_slices - the number of different training set sizes to use
     # num_folds - the K in k-fold cross validation.  REsults will be averaged across folds
-def perform_learning_curve(full_data, nodes_fn, links_fn, num_slices, num_folds, num_cpus = 1):
+    # num_cpus - the folds can be run in parallel on this many processors
+def perform_learning_curve(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, distance_weighting=None):
     shuffle(full_data)
     
     
-    overall_train_errs = [0] * num_slices
-    overall_test_errs = [0] * num_slices
+    road_map = Map(nodes_fn, links_fn)
+    road_map.flatten()
+    it = fold_iterator(full_data, road_map, num_folds, distance_weighting=distance_weighting)
     
-    for i in range(num_folds):
-        print("Running fold " + str(i))
-        train, test = split_train_test(full_data, 0, num_folds)
-    
-        
-        it = downsample_iterator(train, test, num_slices, nodes_fn, links_fn)
-        pool = Pool(num_cpus)
-        output_list = pool.map(run_fold_testonce, it)
-        pool.terminate()
-        
-        train_errs = []
-        test_errs = []
-        for (train_avg_error, train_perc_error, test_avg_error, test_perc_error, train, test) in output_list:
-            train_errs.append(train_avg_error)
-            test_errs.append(test_avg_error)
-        
-        for i in range(len(overall_train_errs)):
-            overall_train_errs[i] += train_errs[i]
-            overall_test_errs[i] += test_errs[i]
-    
-    for i in range(len(overall_train_errs)):
-            overall_train_errs[i] /= num_folds
-            overall_test_errs[i] /= num_folds
-        
-        
-    
-    sizes = [int(float(i+1) * len(train) / num_slices) for i in range(num_slices)]
+    pool = Pool(num_cpus)
+    output_list = pool.map(run_fold_learning_curve, it)
+    pool.terminate()
+
+    train_curve, test_curve = combine_learning_curves(output_list)
     
     plt.cla()
-    plt.plot(sizes, overall_train_errs)
-    plt.plot(sizes, overall_test_errs)
+    plt.plot(LEARNING_CURVE_SIZES, train_curve)
+    plt.plot(LEARNING_CURVE_SIZES, test_curve)
     plt.legend(["Train", "Test"])
     plt.xlabel("Training Set Size")
     plt.ylabel("Avg Absolute Error (seconds/trip)")
@@ -324,7 +340,10 @@ def dw_string(distance_weighting):
     return s
 
 
-if(__name__=="__main__"):
+
+
+
+def try_many_kernels():
     print("Loading trips")
     trips = load_trips("sample_2.csv", 20000)
     shuffle(trips)
@@ -351,6 +370,12 @@ if(__name__=="__main__"):
                 print(d2 - d1)    
                 #perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, use_distance_weighting=False)
 
+
+
+if(__name__=="__main__"):
+    print("Loading trips")
+    trips = load_trips("sample_2.csv", 20000)
+    perform_learning_curve(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, distance_weighting=None)
 
 
 
