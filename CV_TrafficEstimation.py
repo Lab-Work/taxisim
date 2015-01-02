@@ -283,8 +283,8 @@ def combine_learning_curves(output_list):
             full_test_err_list[i] += test_err_list[i]
     
     for i in range(len(LEARNING_CURVE_SIZES)):
-        full_train_err_list[i] /= len(LEARNING_CURVE_SIZES)
-        full_test_err_list[i] /= len(LEARNING_CURVE_SIZES)
+        full_train_err_list[i] /= len(output_list)
+        full_test_err_list[i] /= len(output_list)
 
     return full_train_err_list, full_test_err_list
 
