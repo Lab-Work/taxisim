@@ -15,7 +15,6 @@ from multiprocessing import Pool
 from functools import partial
 
 import sys, traceback
-import os
 
 MAX_SPEED = 30
 
@@ -98,63 +97,49 @@ def compute_weight(distance_weighting, true_dist, est_dist):
     # l1_error - the absolute error
     # sum_perc_error - the (positive) percentage error
     # num_trips - the number of trips represented by this one "unique trip"
-def predict_trip_times_chunk(trips, road_map, route=True, proposed=False, max_speed = None,
+def predict_trip_time(trip, road_map, route=True, proposed=False, max_speed = None,
                        distance_weighting=None, flatten_after = False):
-    
-    print str(os.getppid()) + " --> " + str(os.getpid())
-                           
     try:
         
         if(flatten_after):
             road_map.unflatten()
-            for trip in trips:
-                trip.unflatten(road_map)
+            trip.unflatten(road_map)
                 
         
         error = 0.0
         l1_error = 0.0
         sum_perc_error = 0
         num_trips = 0
-        for trip in trips:
-            if(route):
-                trip.path_links = bidirectional_search(trip.origin_node, trip.dest_node, use_astar=True, max_speed=max_speed)
+        if(route):
+            trip.path_links = bidirectional_search(trip.origin_node, trip.dest_node, use_astar=True, max_speed=max_speed)
+        
+        if(proposed):
+            trip.estimated_time = sum([link.proposed_time for link in trip.path_links])
+        else:
+            trip.estimated_time = sum([link.time for link in trip.path_links])
+        
+        trip.estimated_dist = sum([link.length for link in trip.path_links])
+        
+        # This trip may actually represent several duplicate trips (in terms of origin/destination),
+        # which may have different true times - the dup_times parameter loops through these 
+        for true_time in trip.dup_times:
+            l1_error += abs(trip.estimated_time - true_time)
             
-            if(proposed):
-                trip.estimated_time = sum([link.proposed_time for link in trip.path_links])
-            else:
-                trip.estimated_time = sum([link.time for link in trip.path_links])
-            
-            trip.estimated_dist = sum([link.length for link in trip.path_links])
-            
-            # This trip may actually represent several duplicate trips (in terms of origin/destination),
-            # which may have different true times - the dup_times parameter loops through these 
-            for true_time in trip.dup_times:
-                l1_error += abs(trip.estimated_time - true_time)
+    
+            # If we are using distance weighting, compute weight with Gaussian kernel
+            weight = compute_weight(distance_weighting, trip.dist, trip.estimated_dist)
+            error += abs(trip.estimated_time - true_time) * weight
+    
                 
-        
-                # If we are using distance weighting, compute weight with Gaussian kernel
-                weight = compute_weight(distance_weighting, trip.dist, trip.estimated_dist)
-                error += abs(trip.estimated_time - true_time) * weight
-        
-                    
-                sum_perc_error +=  (abs(trip.estimated_time - true_time) / true_time)
-                num_trips +=  1
+            sum_perc_error +=  (abs(trip.estimated_time - true_time) / true_time)
+            num_trips +=  1
         
         if(flatten_after):
-            for trip in trips:
-                trip.flatten()
+            trip.flatten()
         
-        return trips, error, l1_error, sum_perc_error, num_trips
+        return trip, error, l1_error, sum_perc_error, num_trips
     except:
         raise Exception("".join(traceback.format_exception(*sys.exc_info())))
-
-
-def split_list(trips, num_chunks):
-    for i in range(num_chunks):
-        start_id = int(len(trips) * float(i) / num_chunks)
-        end_id = int(len(trips) * float(i+1) / num_chunks)
-        yield trips[start_id:end_id]
-
 
 
 # Predicts the travel times for many trips, can make use of parallel processing
@@ -166,13 +151,11 @@ def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = 
     if(pool==None):
         # Create a partial function, which only takes a Trip as input (all of the others are given constants)
         # This makes it easy to use with the map() function
-        _, error, l1_error, sum_perc_error, num_trips = predict_trip_times_chunk(trips, road_map=road_map,route=route, proposed=proposed,
-                        max_speed=max_speed, distance_weighting=distance_weighting, flatten_after=False)
-        total_error = error
-        total_l1 = l1_error
-        total_perc_error= sum_perc_error
-        total_num_trips = num_trips
+        trip_func = partial(predict_trip_time, road_map=road_map,route=route, proposed=proposed,
+                        max_speed=max_speed, distance_weighting=distance_weighting, flatten_after=False)        
         
+        # Predict the travel times for all of the trips
+        output_list = map(trip_func, trips)
 
     else:
         # If we are using several cpus, we will use Pool.map() instead
@@ -187,20 +170,19 @@ def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = 
         # Create a partial function, which only takes a Trip as input (all of the others are given constants)
         # This makes it easy to use with the map() function.
         # The trips must be flattened, since they are being sent across processes
-        trip_func = partial(predict_trip_times_chunk, road_map=road_map,route=route, proposed=proposed,
+        trip_func = partial(predict_trip_time, road_map=road_map,route=route, proposed=proposed,
                         max_speed=max_speed, distance_weighting=distance_weighting, flatten_after=True)         
         
         
         # create the multiprocessing pool to route the Trips in parallel
-        #pool = Pool(num_cpus)
         
         # Perform the routing with one chunk per CPU
-        it = split_list(trips, pool._processes)
-        output_list = pool.map(trip_func, it)
-        #pool.terminate()
+        ideal_chunksize = (len(trips) / pool._processes) + 1
+        output_list = pool.map(trip_func, trips, chunksize=ideal_chunksize)
+        pool.terminate()
         
         print("Unflattening trips")
-        routed_trips = [trip for trip_list, error, l1_error, sum_perc_error, num_trips in output_list for trip in trip_list]
+        routed_trips = [trip for trip, error, l1_error, sum_perc_error, num_trips in output_list]
         
         # The Pool returns a new copy of the trips - the relevant data must be copied back to the originals
         # The Trip must also be unflattened, for use with the current Map
@@ -210,16 +192,16 @@ def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = 
             trips[i].estimated_dist = routed_trips[i].estimated_dist
             trips[i].unflatten(road_map)
             
-        print("Merging outputs")
-        total_error = 0.0
-        total_l1 = 0.0
-        total_perc_error = 0.0
-        total_num_trips = 0
-        for trip_list, error, l1_error, sum_perc_error, num_trips in output_list:
-            total_error += error
-            total_l1 += l1_error
-            total_perc_error += sum_perc_error
-            total_num_trips += num_trips
+    print("Merging outputs")
+    total_error = 0.0
+    total_l1 = 0.0
+    total_perc_error = 0.0
+    total_num_trips = 0
+    for trip, error, l1_error, sum_perc_error, num_trips in output_list:
+        total_error += error
+        total_l1 += l1_error
+        total_perc_error += sum_perc_error
+        total_num_trips += num_trips
     
     avg_error = total_l1 / total_num_trips
     avg_perc_error = total_perc_error / total_num_trips
@@ -483,7 +465,7 @@ def test_parallel_routing():
         else:
             pool = None
         print("Loading trips")
-        trips = load_trips("sample_3.csv", 100000)
+        trips = load_trips("sample_3.csv", 100)
         
         print("We have " + str(len(trips)) + " trips")
         
