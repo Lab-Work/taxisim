@@ -465,7 +465,7 @@ def test_parallel_routing():
         else:
             pool = None
         print("Loading trips")
-        trips = load_trips("sample_3.csv", 100)
+        trips = load_trips("sample_3.csv", 100000)
         
         print("We have " + str(len(trips)) + " trips")
         
