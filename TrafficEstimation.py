@@ -180,6 +180,7 @@ def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = 
         # Perform the routing with one chunk per CPU
         ideal_chunksize = (len(trips) / num_cpus) + 1
         output_list = pool.map(trip_func, trips, chunksize=ideal_chunksize)
+        pool.terminate()
         
         print("Unflattening trips")
         routed_trips = [trip for trip, error, l1_error, sum_perc_error, num_trips in output_list]
