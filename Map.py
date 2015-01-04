@@ -146,6 +146,8 @@ class Map:
         self.links_by_node_id = {}
 
         self.total_region_count = 0
+        
+        self.isFlat = False
 
         # Read nodes file and create node objects
         with open(nodes_fn, "r") as f:
@@ -272,6 +274,8 @@ class Map:
     # Replaces references on Node and Link objects with id numbers.  This way the graph can be pickled
     # and, for example, sent to a worker process
     def flatten(self):
+        self.isFlat = True
+        
         for node in self.nodes:
             if(node.forward_links!= None):
                 node.forward_link_ids = [link.link_id for link in node.forward_links]
@@ -288,6 +292,14 @@ class Map:
     # Reverses the flatten() operation, rebuilding the references between Node and Link objects
     # from id numbers
     def unflatten(self):
+        #Ensure that we only have to unflatten the map once
+        if(not self.isFlat):
+            return
+        
+        print ("Unflattening map")
+            
+        self.isFlat = False
+        
         for node in self.nodes:
             if(node.forward_link_ids != None):
                 node.forward_links = [self.links[_id] for _id in node.forward_link_ids]

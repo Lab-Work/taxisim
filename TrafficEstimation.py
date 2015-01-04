@@ -7,10 +7,14 @@ Created on Mon Dec  8 14:15:54 2014
 from BiDirectionalSearch import bidirectional_search
 from Trip import Trip
 from Map import Map
+
 from datetime import datetime
 import csv
-from matplotlib import pyplot as plt
 import math
+from multiprocessing import Pool
+from functools import partial
+
+import sys, traceback
 
 MAX_SPEED = 30
 
@@ -74,10 +78,10 @@ def compute_weight(distance_weighting, true_dist, est_dist):
     
 
 
-# Predicts the duration of trips, based on their origin, destination, and the state of traffic
+# Predicts the duration of a single tirp based on its origin, destination, and the state of traffic
 # Computes several L1-based error metrics in the process, which measure the prediction accuracy
 # It is assumed that the driver will take the shortest path
-# This function can be used in a few different contexts, which are given by the route and proposed parameters
+# This function can be used in a few different contexts, which are given by the parameters route and proposed
 # Params:
     # road_map - a Map object which has some travel times on each link
     # trips - a set of Trips that will be routed and predicted
@@ -91,19 +95,19 @@ def compute_weight(distance_weighting, true_dist, est_dist):
     # error - the value of the error metric (which we are trying to minimize)
     # avg_trip_error - average absolute error across all trips
     # avg_perc_error - average percent error across all trips
-def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = None,
-                       distance_weighting=None):
-                           
-                           
+def predict_trip_time(trip, road_map, route=True, proposed=False, max_speed = None,
+                       distance_weighting=None, flatten_after = False):
+    try:
         
-    if(max_speed==None):
-        max_speed = road_map.get_max_speed()
-    
-    error = 0.0
-    l1_error = 0.0
-    avg_perc_error = 0
-    num_trips = 0
-    for trip in trips:
+        if(flatten_after):
+            road_map.unflatten()
+            trip.unflatten(road_map)
+                
+        
+        error = 0.0
+        l1_error = 0.0
+        sum_perc_error = 0
+        num_trips = 0
         if(route):
             trip.path_links = bidirectional_search(trip.origin_node, trip.dest_node, use_astar=True, max_speed=max_speed)
         
@@ -119,18 +123,88 @@ def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = 
         for true_time in trip.dup_times:
             l1_error += abs(trip.estimated_time - true_time)
             
-
-            #If we are using distance weighting, compute weight with Gaussian kernel
+    
+            # If we are using distance weighting, compute weight with Gaussian kernel
             weight = compute_weight(distance_weighting, trip.dist, trip.estimated_dist)
             error += abs(trip.estimated_time - true_time) * weight
-
-                
-            avg_perc_error +=  (abs(trip.estimated_time - true_time) / true_time)
-            num_trips +=  1
     
-    avg_perc_error /= num_trips
-    avg_trip_error = l1_error / num_trips
-    return error, avg_trip_error, avg_perc_error
+                
+            sum_perc_error +=  (abs(trip.estimated_time - true_time) / true_time)
+            num_trips +=  1
+        
+        if(flatten_after):
+            trip.flatten()
+        
+        return trip, error, l1_error, sum_perc_error, num_trips
+    except:
+        raise Exception("".join(traceback.format_exception(*sys.exc_info())))
+
+
+def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = None,
+                       distance_weighting=None, num_cpus=1):
+    if(max_speed==None):
+        max_speed = road_map.get_max_speed()
+    
+    if(num_cpus<=1):
+        # Create a partial function, which only takes a Trip as input (all of the others are given constants)
+        # This makes it easy to use with the map() function
+        trip_func = partial(predict_trip_time, road_map=road_map,route=route, proposed=proposed,
+                        max_speed=max_speed, distance_weighting=distance_weighting, flatten_after=False)        
+        
+        # Predict the travel times for all of the trips
+        output_list = map(trip_func, trips)
+
+    else:
+        # If we are using several cpus, we will use Pool.map() instead
+        # However, the Trips and Map must be flattened before they can be sent to worker processes
+        print("Flattening everything.")
+        for trip in trips:
+            trip.flatten()
+        road_map.flatten()
+        
+        print("Splitting")
+        
+        # Create a partial function, which only takes a Trip as input (all of the others are given constants)
+        # This makes it easy to use with the map() function.
+        # The trips must be flattened, since they are being sent across processes
+        trip_func = partial(predict_trip_time, road_map=road_map,route=route, proposed=proposed,
+                        max_speed=max_speed, distance_weighting=distance_weighting, flatten_after=True)         
+        
+        
+        # create the multiprocessing pool to route the Trips in parallel
+        pool = Pool(num_cpus)
+        
+        # Perform the routing with one chunk per CPU
+        ideal_chunksize = (len(trips) / num_cpus) + 1
+        output_list = pool.map(trip_func, trips, chunksize=ideal_chunksize)
+        
+        print("Unflattening trips")
+        routed_trips = [trip for trip, error, l1_error, sum_perc_error, num_trips in output_list]
+        
+        # The Pool returns a new copy of the trips - the relevant data must be copied back to the originals
+        # The Trip must also be unflattened, for use with the current Map
+        for i in xrange(len(trips)):
+            trips[i].path_link_ids = routed_trips[i].path_link_ids
+            trips[i].estimated_time = routed_trips[i].estimated_time
+            trips[i].estimated_dist = routed_trips[i].estimated_dist
+            trips[i].unflatten(road_map)
+            
+    print("Merging outputs")
+    total_error = 0.0
+    total_l1 = 0.0
+    total_perc_error = 0.0
+    total_num_trips = 0
+    for trip, error, l1_error, sum_perc_error, num_trips in output_list:
+        total_error += error
+        total_l1 += l1_error
+        total_perc_error += sum_perc_error
+        total_num_trips += num_trips
+    
+    avg_error = total_l1 / total_num_trips
+    avg_perc_error = total_perc_error / total_num_trips
+    return error, avg_error, avg_perc_error
+    
+            
         
 # Compute link offsets based on trip time errors.  Link offsets indicate whether
 # this link's travel time should increase or decrease, in order to decrease the 
@@ -378,11 +452,30 @@ def plot_unique_trips():
     new_trips = [trip_lookup[key] for key in trip_lookup]
     return new_trips
 
+def test_parallel_routing():
+    print("Loading trips")
+    trips = load_trips("sample_3.csv", 100000)
+    
+    print("We have " + str(len(trips)) + " trips")
+    
+    print("Loading map")
+    nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv")
+    
+    print("Map-matching trips")
+    unique_trips = nyc_map.match_trips_to_nodes(trips)    
+    
+    for cpus in range(1,9):
+        print ("Running with " + str(cpus) + " CPUS")
+        d1 = datetime.now()
+        predict_trip_times(nyc_map, unique_trips, route=True, proposed=False, max_speed = None,
+                       distance_weighting=None, num_cpus=cpus)
+        d2 = datetime.now()
+        print (str(d2 - d1))
 
 
 if(__name__=="__main__"):
     t1 = datetime.now()
-    test_on_small_sample()
+    test_parallel_routing()
     t2 = datetime.now()
     print("TOTAL TIME = " + str(t2 - t1))
     #plot_unique_trips()    

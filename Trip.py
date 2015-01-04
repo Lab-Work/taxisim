@@ -64,6 +64,8 @@ class Trip:
         self.time = int(duration.total_seconds()) #Time stores the duration as seconds
         
         #For traffic estimation algorithm
+        self.path_links = None
+        self.path_link_ids = None
         self.dup_times = None
         self.estimated_time = 0.0
         self.estimate_distance = 0.0
@@ -223,7 +225,7 @@ class Trip:
             self.dest_node = None
         #Replace links with link ids
         if(self.path_links != None):
-            self.path_link_ids = [link.id for link in self.path_links]
+            self.path_link_ids = [link.link_id for link in self.path_links]
             self.path_links = None
     
     # Undoes the flatten() operation using a Map object.  ID numbers of graph objects
