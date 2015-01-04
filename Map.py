@@ -274,6 +274,9 @@ class Map:
     # Replaces references on Node and Link objects with id numbers.  This way the graph can be pickled
     # and, for example, sent to a worker process
     def flatten(self):
+        if(self.isFlat):
+            return
+        
         self.isFlat = True
         
         for node in self.nodes:

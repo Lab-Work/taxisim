@@ -78,7 +78,7 @@ def compute_weight(distance_weighting, true_dist, est_dist):
     
 
 
-# Predicts the duration of a single tirp based on its origin, destination, and the state of traffic
+# Predicts the duration of a single trip based on its origin, destination, and the state of traffic
 # Computes several L1-based error metrics in the process, which measure the prediction accuracy
 # It is assumed that the driver will take the shortest path
 # This function can be used in a few different contexts, which are given by the parameters route and proposed
@@ -92,9 +92,11 @@ def compute_weight(distance_weighting, true_dist, est_dist):
         # This is used by the A* heuristic - only important if route=True
     # distance_weighting - the method for computing the weight.  see compute_weight()
 # Returns:
+    # trip - the same trip that was given as input
     # error - the value of the error metric (which we are trying to minimize)
-    # avg_trip_error - average absolute error across all trips
-    # avg_perc_error - average percent error across all trips
+    # l1_error - the absolute error
+    # sum_perc_error - the (positive) percentage error
+    # num_trips - the number of trips represented by this one "unique trip"
 def predict_trip_time(trip, road_map, route=True, proposed=False, max_speed = None,
                        distance_weighting=None, flatten_after = False):
     try:
@@ -140,6 +142,7 @@ def predict_trip_time(trip, road_map, route=True, proposed=False, max_speed = No
         raise Exception("".join(traceback.format_exception(*sys.exc_info())))
 
 
+# Predicts the travel times for many trips, can make use of parallel processing
 def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = None,
                        distance_weighting=None, num_cpus=1):
     if(max_speed==None):
