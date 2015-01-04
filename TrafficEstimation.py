@@ -15,6 +15,7 @@ from multiprocessing import Pool
 from functools import partial
 
 import sys, traceback
+import os
 
 MAX_SPEED = 30
 
@@ -99,6 +100,8 @@ def compute_weight(distance_weighting, true_dist, est_dist):
     # num_trips - the number of trips represented by this one "unique trip"
 def predict_trip_times_chunk(trips, road_map, route=True, proposed=False, max_speed = None,
                        distance_weighting=None, flatten_after = False):
+    
+    print str(os.getppid()) + " --> " + str(os.getpid())
                            
     try:
         
@@ -156,11 +159,11 @@ def split_list(trips, num_chunks):
 
 # Predicts the travel times for many trips, can make use of parallel processing
 def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = None,
-                       distance_weighting=None, num_cpus=1):
+                       distance_weighting=None, pool=None):
     if(max_speed==None):
         max_speed = road_map.get_max_speed()
     
-    if(num_cpus<=1):
+    if(pool==None):
         # Create a partial function, which only takes a Trip as input (all of the others are given constants)
         # This makes it easy to use with the map() function
         _, error, l1_error, sum_perc_error, num_trips = predict_trip_times_chunk(trips, road_map=road_map,route=route, proposed=proposed,
@@ -189,12 +192,12 @@ def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = 
         
         
         # create the multiprocessing pool to route the Trips in parallel
-        pool = Pool(num_cpus)
+        #pool = Pool(num_cpus)
         
         # Perform the routing with one chunk per CPU
-        it = split_list(trips, num_cpus)
+        it = split_list(trips, pool._processes)
         output_list = pool.map(trip_func, it)
-        pool.terminate()
+        #pool.terminate()
         
         print("Unflattening trips")
         routed_trips = [trip for trip_list, error, l1_error, sum_perc_error, num_trips in output_list for trip in trip_list]
@@ -471,24 +474,42 @@ def plot_unique_trips():
     return new_trips
 
 def test_parallel_routing():
-    print("Loading trips")
-    trips = load_trips("sample_3.csv", 100)
-    
-    print("We have " + str(len(trips)) + " trips")
-    
-    print("Loading map")
-    nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv")
-    
-    print("Map-matching trips")
-    unique_trips = nyc_map.match_trips_to_nodes(trips)    
+    pool = Pool(8)
     
     for cpus in range(1,9):
-        print ("Running with " + str(cpus) + " CPUS")
+        
+        if(cpus>1):
+            pool = Pool(cpus)
+        else:
+            pool = None
+        print("Loading trips")
+        trips = load_trips("sample_3.csv", 100)
+        
+        print("We have " + str(len(trips)) + " trips")
+        
+        print("Loading map")
+        nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv")
+        
+        print("Map-matching trips")
+        unique_trips = nyc_map.match_trips_to_nodes(trips)    
+    
+    
+        print ("**** Running with " + str(cpus) + " CPUs")
         d1 = datetime.now()
         predict_trip_times(nyc_map, unique_trips, route=True, proposed=False, max_speed = None,
-                       distance_weighting=None, num_cpus=cpus)
+                       distance_weighting=None, pool=pool)
         d2 = datetime.now()
-        print (str(d2 - d1))
+        print ("**** " + str(d2 - d1))
+        
+        if(pool!=None):
+            pool.terminate()
+        
+        del pool
+        del trips
+        del nyc_map
+        del unique_trips
+        del d1
+        del d2
 
 
 if(__name__=="__main__"):
