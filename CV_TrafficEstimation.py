@@ -7,6 +7,7 @@ Created on Wed Dec 10 18:28:54 2014
 from TrafficEstimation import *
 from random import shuffle
 from multiprocessing import Pool
+from matplotlib import pyplot as plt
 import csv
 
 
@@ -54,7 +55,7 @@ def split_train_test(full_data, fold_id, num_folds):
         # (may be a subset of input due to duplicates, invalids)
     # train - the modified Trip objects from the test set, now with .estimated_time attribute
         # (may be a subset of input due to duplicates, invalids)
-def run_fold((train, test, road_map, distance_weighting)):
+def run_fold((train, test, road_map, distance_weighting, model_idle_time, initial_idle_time)):
 
     #print("Running fold - " + str(len(train)) + " train vs. " + str(len(test)) + " test " + str(use_distance_weighting))
     # Prepare the map for use
@@ -63,7 +64,8 @@ def run_fold((train, test, road_map, distance_weighting)):
     
     # Run the traffic estimation algorithm
     (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors) = estimate_travel_times(
-        road_map, train, max_iter=20, test_set=test, distance_weighting=distance_weighting)
+        road_map, train, max_iter=2, test_set=test, distance_weighting=distance_weighting,
+        model_idle_time=model_idle_time, initial_idle_time=initial_idle_time)
     
     # Remove the trips that were not estimated (duplicates and errors)
     test = [trip for trip in test if trip.dup_times != None]
@@ -133,10 +135,10 @@ def run_fold_learning_curve((train, test, road_map, distance_weighting)):
     # Params:
     # road_map - a Map object containing the road network.
     # distance_weighting - the method for computing the weight.  see compute_weight()
-def fold_iterator(full_data, road_map,  num_folds, distance_weighting=None):
+def fold_iterator(full_data, road_map,  num_folds, distance_weighting=None,model_idle_time=False, initial_idle_time=0):
     for i in range(num_folds):
         train, test = split_train_test(full_data, i, num_folds)
-        yield (train, test, road_map, distance_weighting)
+        yield (train, test, road_map, distance_weighting, model_idle_time, initial_idle_time)
 
 
 # Takes a list of list, and produces an average list (by averaging the inner lists)
@@ -193,21 +195,20 @@ def output_trips(trips, filename):
     # num_fold - the K in k-fold cross validation
     # num_cpus - Will run this many folds in parallel
     # distance_weighting - the method for computing the weight.  see compute_weight()
-def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, distance_weighting=None):
-    from matplotlib import pyplot as plt
+def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, distance_weighting=None, model_idle_time=False, initial_idle_time=0):
     # shuffle(full_data)
 
     road_map = Map(nodes_fn, links_fn)
     road_map.flatten()
-    it = fold_iterator(full_data, road_map, num_folds, distance_weighting=distance_weighting)
+    it = fold_iterator(full_data, road_map, num_folds, distance_weighting=distance_weighting, model_idle_time=False, initial_idle_time=0)
     pool = Pool(num_cpus)
-    output_list = pool.map(run_fold, it)
+    output_list = map(run_fold, it)
     (train_avg, train_perc, test_avg, test_perc, train_set, test_set) = combine_outputs(output_list)
     pool.terminate()
     
     
-    fn_prefix = dw_string(distance_weighting)
-    
+    fn_prefix = dw_string(distance_weighting) + "_" + str(model_idle_time) + "_" + str(initial_idle_time)
+    print("outputting " + str(fn_prefix))
     output_trips(train_set, "results/" + fn_prefix + "train_trips.csv")
     output_trips(test_set, "results/" + fn_prefix + "test_trips.csv")
     
@@ -255,6 +256,16 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, distance_
     print("Average train error = " + str(train_avg[-1]))
     print("Average test error = " + str(test_avg[-1]))
     
+
+
+def try_idle_times(full_data, nodes_fn, links_fn, num_folds, num_cpus):
+    perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 8, distance_weighting=None, model_idle_time=False, initial_idle_time=0)
+    for idle_time in [0,100,200,300,400,500]:
+        perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 8, distance_weighting=None, model_idle_time=True, initial_idle_time=idle_time)
+
+        
+
+
 
 
 # An iterator which downsamples the training set, using more data in each iteration
@@ -322,6 +333,9 @@ def perform_learning_curve(full_data, nodes_fn, links_fn, num_folds, num_cpus = 
 
 
 def dw_string(distance_weighting):
+    if(distance_weighting==None):
+        return "NONE"
+        
     (val_type, kern_type, dist_bw) = distance_weighting
     if(val_type==DW_ABS):
         s = "ABS"
@@ -374,9 +388,9 @@ def try_many_kernels():
 
 if(__name__=="__main__"):
     print("Loading trips")
-    trips = load_trips("sample_2.csv", 20000)
-    perform_learning_curve(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, distance_weighting=None)
-
+    trips = load_trips("sample_2.csv", 20)
+    #perform_learning_curve(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, distance_weighting=None)
+    try_idle_times(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8)
 
 
     

@@ -264,7 +264,7 @@ def compute_link_offsets(road_map, unique_trips, distance_weighting=None):
     # iter_perc_errors - A list of average percent errors at each iteration
     # test_avg_errors - A list of average absolute errors on the test set at each iteration
     # test_perc_errors - A list of average percent errors on the test set at each iteration
-def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_weighting=None, model_idle_time=True):
+def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_weighting=None, model_idle_time=True, initial_idle_time=0):
     #print("Estimating traffic.  use_distance_weighting=" + str(use_distance_weighting))
     DEBUG = False
     #Collapse identical trips    
@@ -279,7 +279,7 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_
     road_map.set_all_link_speeds(avg_velocity)
     
     # Set the initial idle time
-    road_map.idle_link.time = INITIAL_IDLE_TIME
+    road_map.idle_link.time = initial_idle_time
     
     
     iter_avg_errors = []

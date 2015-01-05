@@ -92,8 +92,9 @@ class Map:
     def get_max_speed(self):
         max_speed = 0.0
         for link in self.links:
-            link_speed = float(link.length) / link.time
-            max_speed = max(max_speed, link_speed)
+            if(link != self.idle_link):
+                link_speed = float(link.length) / link.time
+                max_speed = max(max_speed, link_speed)
         return max_speed
 
     def set_all_link_speeds(self, speed):
