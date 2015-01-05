@@ -264,7 +264,7 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, distance_
 
 def try_idle_times(full_data, nodes_fn, links_fn, num_folds, num_cpus):
     perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 8, distance_weighting=None, model_idle_time=False, initial_idle_time=0)
-    for idle_time in [0,100,200,300,400,500]:
+    for idle_time in [0,10,20,30,40,50,100,200,300,400,500]:
         perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 8, distance_weighting=None, model_idle_time=True, initial_idle_time=idle_time)
 
         
