@@ -234,10 +234,10 @@ class Map:
             self.links[i].link_id = i
 
         # Create the "idle link", which represents waiting
-        self.idle_link = Link(0,0,18000)
+        self.idle_link = Link(0,0,0)
         self.idle_link.time = 300 # Default waiting time of 5 minutes
         self.idle_link.link_id = i + 1
-        self.links.append[self.idle_link]
+        self.links.append(self.idle_link)
 
 
         # Finally, index nodes using KD Trees
@@ -294,10 +294,11 @@ class Map:
                 link.backward_links = None
         
         for link in self.links:
-            link.origin_node_id = link.origin_node.node_id
-            link.connecting_node_id = link.connecting_node.node_id
-            link.origin_node = None
-            link.connecting_node = None
+            if(link.origin_node != None):
+                link.origin_node_id = link.origin_node.node_id
+                link.connecting_node_id = link.connecting_node.node_id
+                link.origin_node = None
+                link.connecting_node = None
     
     # Reverses the flatten() operation, rebuilding the references between Node and Link objects
     # from id numbers
@@ -316,8 +317,9 @@ class Map:
                 node.backward_links = [self.links[_id] for _id in node.backward_link_ids]
         
         for link in self.links:
-            link.origin_node = self.nodes_by_id[link.origin_node_id]
-            link.connecting_node = self.nodes_by_id[link.connecting_node_id]
+            if(link.origin_node_id!=0):
+                link.origin_node = self.nodes_by_id[link.origin_node_id]
+                link.connecting_node = self.nodes_by_id[link.connecting_node_id]
             
     
     

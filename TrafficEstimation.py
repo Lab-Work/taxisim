@@ -17,6 +17,7 @@ from functools import partial
 import sys, traceback
 
 MAX_SPEED = 30
+INITIAL_IDLE_TIME = 300
 
 DW_ABS = 1
 DW_REL = 2
@@ -98,7 +99,7 @@ def compute_weight(distance_weighting, true_dist, est_dist):
     # sum_perc_error - the (positive) percentage error
     # num_trips - the number of trips represented by this one "unique trip"
 def predict_trip_time(trip, road_map, route=True, proposed=False, max_speed = None,
-                       distance_weighting=None, flatten_after = False):
+                       distance_weighting=None, flatten_after = False, model_idle_time=True):
     try:
         
         if(flatten_after):
@@ -112,6 +113,8 @@ def predict_trip_time(trip, road_map, route=True, proposed=False, max_speed = No
         num_trips = 0
         if(route):
             trip.path_links = bidirectional_search(trip.origin_node, trip.dest_node, use_astar=True, max_speed=max_speed)
+            if(model_idle_time):
+                trip.path_links.append(road_map.idle_link)
         
         if(proposed):
             trip.estimated_time = sum([link.proposed_time for link in trip.path_links])
@@ -144,7 +147,7 @@ def predict_trip_time(trip, road_map, route=True, proposed=False, max_speed = No
 
 # Predicts the travel times for many trips, can make use of parallel processing
 def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = None,
-                       distance_weighting=None, pool=None):
+                       distance_weighting=None, model_idle_time=True, pool=None):
     if(max_speed==None):
         max_speed = road_map.get_max_speed()
     
@@ -152,7 +155,8 @@ def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = 
         # Create a partial function, which only takes a Trip as input (all of the others are given constants)
         # This makes it easy to use with the map() function
         trip_func = partial(predict_trip_time, road_map=road_map,route=route, proposed=proposed,
-                        max_speed=max_speed, distance_weighting=distance_weighting, flatten_after=False)        
+                        max_speed=max_speed, distance_weighting=distance_weighting,
+                        model_idle_time=model_idle_time, flatten_after=False)        
         
         # Predict the travel times for all of the trips
         output_list = map(trip_func, trips)
@@ -171,7 +175,8 @@ def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = 
         # This makes it easy to use with the map() function.
         # The trips must be flattened, since they are being sent across processes
         trip_func = partial(predict_trip_time, road_map=road_map,route=route, proposed=proposed,
-                        max_speed=max_speed, distance_weighting=distance_weighting, flatten_after=True)         
+                        max_speed=max_speed, distance_weighting=distance_weighting, 
+                        model_idle_time=model_idle_time, flatten_after=True)         
         
         
         # create the multiprocessing pool to route the Trips in parallel
@@ -192,7 +197,6 @@ def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = 
             trips[i].estimated_dist = routed_trips[i].estimated_dist
             trips[i].unflatten(road_map)
             
-    print("Merging outputs")
     total_error = 0.0
     total_l1 = 0.0
     total_perc_error = 0.0
@@ -205,7 +209,9 @@ def predict_trip_times(road_map, trips, route=True, proposed=False, max_speed = 
     
     avg_error = total_l1 / total_num_trips
     avg_perc_error = total_perc_error / total_num_trips
-    return error, avg_error, avg_perc_error
+    
+    
+    return total_error, avg_error, avg_perc_error
     
             
         
@@ -252,12 +258,13 @@ def compute_link_offsets(road_map, unique_trips, distance_weighting=None):
     # max_iter - maximum number of iterations before the experiment ends
     # test_set - an optional hold-out test set to assess how well the model generalizes.
     # distance_weighting - the method for computing the weight.  see compute_weight()
+    # model_idle_time - Assumes that each trip includes a fixed amount of idle time (which will be estimated)
 # Returns:
     # iter_avg_errors - A list of the average absolute errors at each iteration
     # iter_perc_errors - A list of average percent errors at each iteration
     # test_avg_errors - A list of average absolute errors on the test set at each iteration
     # test_perc_errors - A list of average percent errors on the test set at each iteration
-def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_weighting=None):
+def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_weighting=None, model_idle_time=True):
     #print("Estimating traffic.  use_distance_weighting=" + str(use_distance_weighting))
     DEBUG = False
     #Collapse identical trips    
@@ -270,6 +277,9 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_
     # Set initial travel times to average velocity across trips
     avg_velocity = compute_avg_velocity(trips)
     road_map.set_all_link_speeds(avg_velocity)
+    
+    # Set the initial idle time
+    road_map.idle_link.time = INITIAL_IDLE_TIME
     
     
     iter_avg_errors = []
@@ -297,14 +307,15 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_
         # This is the most costly part of each iteration
         # l1_error stores the sum of all absolute errors
         error_metric, avg_trip_error, avg_perc_error = predict_trip_times(road_map,
-                unique_trips, route=True, distance_weighting=distance_weighting)
+                unique_trips, route=True, distance_weighting=distance_weighting,
+                model_idle_time=model_idle_time)
         iter_avg_errors.append(avg_trip_error)
         iter_perc_errors.append(avg_perc_error)
         
         # If we have a test set, also evaluate the map on it
         if(test_set != None):
             test_l1_error, test_avg_trip_error, test_perc_error = predict_trip_times(
-                road_map, unique_test_trips, route=True)
+                road_map, unique_test_trips, route=True, model_idle_time=model_idle_time)
             test_avg_errors.append(test_avg_trip_error)
             test_perc_errors.append(test_perc_error)
         
@@ -333,6 +344,8 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_
             #Links with a positive offset are systematically overestimated - travel times should be decreased
             #Links with a negative offset are systematically underestiamted - travel times should be increased
             for link in road_map.links:
+                if(DEBUG and link==road_map.idle_link):
+                    print("***** " + str(link.offset))
                 if(link.offset > 0):
                     link.proposed_time = link.time / (1 + eps)
                 elif(link.offset < 0):
@@ -341,23 +354,29 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_
                     link.proposed_time = link.time
                 
                 #Constrain the travel time to a physically realistic value
-                link.proposed_time = max(link.proposed_time, link.length/MAX_SPEED)
+                if(link != road_map.idle_link):
+                    link.proposed_time = max(link.proposed_time, link.length/MAX_SPEED)
 
     
             # Inner Loop Step 2 - Evaluate proposed travel times in terms of L1 error
             # Use routes to predict travel times for trips
             # We do not compute new routes yet (route=False), we use the existing ones
-            new_error_metric, avg_trip_error, avg_perc_error = predict_trip_times(
+            new_error_metric, new_avg_trip_error, new_avg_perc_error = predict_trip_times(
                             road_map, unique_trips, route=False, proposed=True, max_speed=0,
-                            distance_weighting=distance_weighting)            
+                            distance_weighting=distance_weighting, model_idle_time=model_idle_time)            
             if(DEBUG):
                 print("Old L1 = " + str(error_metric))
                 print("New L1 = " + str(new_error_metric))
+                print("Avg = " + str(avg_trip_error))
             
             # Inner Loop Step 3 - Accept the change if it is an improvement
             if(new_error_metric < error_metric):
+                if(DEBUG):
+                    print("Accepting")
                 # The step decreased the error - accept it!
                 for link in road_map.links:
+                    if(DEBUG and link==road_map.idle_link):
+                        print (">>>" + str(link.proposed_time))
                     link.time = link.proposed_time
                 
                 # Now that the travel times have changed, we need to route the trips again

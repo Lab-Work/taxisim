@@ -117,7 +117,7 @@ def run_fold_learning_curve((train, test, road_map, distance_weighting)):
         d3 = datetime.now()
         print("Finished testing model of size " + str(size) + " after " + str(d3 - d2))
         print((train_avg_error, test_avg_error))        
-        
+        print("Estimated idle time : " + str(road_map.idle_link.time))
         
         
         train_avg_errors.append(train_avg_error)
@@ -315,7 +315,7 @@ def perform_learning_curve(full_data, nodes_fn, links_fn, num_folds, num_cpus = 
     plt.legend(["Train", "Test"])
     plt.xlabel("Training Set Size")
     plt.ylabel("Avg Absolute Error (seconds/trip)")
-    plt.savefig("learning_curve.png")
+    plt.savefig("learning_curve_idle.png")
     
     print("Done!")
  
