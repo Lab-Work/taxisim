@@ -233,6 +233,13 @@ class Map:
         for i in xrange(len(self.links)):
             self.links[i].link_id = i
 
+        # Create the "idle link", which represents waiting
+        self.idle_link = Link(0,0,18000)
+        self.idle_link.time = 300 # Default waiting time of 5 minutes
+        self.idle_link.link_id = i + 1
+        self.links.append[self.idle_link]
+
+
         # Finally, index nodes using KD Trees
         self.region_kd_tree = KDTree(self.nodes, leaf_size=region_kd_size)
         self.lookup_kd_tree = KDTree(self.nodes, leaf_size=lookup_kd_size)
