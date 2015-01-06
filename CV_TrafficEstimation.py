@@ -206,7 +206,7 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, distance_
 
     road_map = Map(nodes_fn, links_fn)
     road_map.flatten()
-    it = fold_iterator(full_data, road_map, num_folds, distance_weighting=distance_weighting, model_idle_time=False, initial_idle_time=0)
+    it = fold_iterator(full_data, road_map, num_folds, distance_weighting=distance_weighting, model_idle_time=False, initial_idle_time=initial_idle_time)
     pool = Pool(num_cpus)
     output_list = pool.map(run_fold, it)
     (train_avg, train_perc, test_avg, test_perc, train_set, test_set) = combine_outputs(output_list)
