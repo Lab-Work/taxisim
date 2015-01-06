@@ -71,7 +71,7 @@ def run_fold((train, test, road_map, distance_weighting, model_idle_time, initia
     test = [trip for trip in test if trip.dup_times != None]
     train = [trip for trip in train if trip.dup_times != None]    
     
-    print (str(initial_idle_time) + " --> " + str(map.idle_link.time))    
+    print (str(initial_idle_time) + " --> " + str(road_map.idle_link.time))    
     
     
     # We have to reset these fields so the objects can be pickled/returned across processes
