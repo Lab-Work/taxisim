@@ -64,24 +64,18 @@ def run_fold((train, test, road_map, distance_weighting, model_idle_time, initia
     
     # Run the traffic estimation algorithm
     (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors) = estimate_travel_times(
-        road_map, train, max_iter=20, test_set=test, distance_weighting=distance_weighting,
+        road_map, train, max_iter=2, test_set=test, distance_weighting=distance_weighting,
         model_idle_time=model_idle_time, initial_idle_time=initial_idle_time)
     
     # Remove the trips that were not estimated (duplicates and errors)
-    test = [trip for trip in test if trip.dup_times != None]
-    train = [trip for trip in train if trip.dup_times != None]    
+    test=None
+    train=None    
+    #test = [trip for trip in test if trip.dup_times != None]
+    #train = [trip for trip in train if trip.dup_times != None]    
     
     print (str(initial_idle_time) + " --> " + str(road_map.idle_link.time))    
     
-    
-    # We have to reset these fields so the objects can be pickled/returned across processes
-    # Otherwise we would have to send the whole graph, because of pointers
-    for trip_lst in [test, train]:
-        for trip in trip_lst:
-            trip.origin_node = None
-            trip.dest_node = None
-            trip.path_links = None
-    
+
     # Return everything
     return (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors, train, test)
 
@@ -216,8 +210,8 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, pool, distance_weightin
     
     fn_prefix = dw_string(distance_weighting) + "_" + str(model_idle_time) + "_" + str(initial_idle_time)
     print("outputting " + str(fn_prefix))
-    output_trips(train_set, "results/" + fn_prefix + "train_trips.csv")
-    output_trips(test_set, "results/" + fn_prefix + "test_trips.csv")
+    #output_trips(train_set, "results/" + fn_prefix + "train_trips.csv")
+    #output_trips(test_set, "results/" + fn_prefix + "test_trips.csv")
     
     #Generate figures
     plt.cla()
@@ -396,11 +390,11 @@ def try_many_kernels():
 
 
 if(__name__=="__main__"):
-    pool = Pool(1)
+    pool = Pool(2)
     print("Loading trips")
     trips = load_trips("sample_2.csv", 20000)
     #perform_learning_curve(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, distance_weighting=None)
-    try_idle_times(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, pool=pool)
+    try_idle_times(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 2, pool=pool)
 
 
     
