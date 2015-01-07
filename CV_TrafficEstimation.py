@@ -230,6 +230,7 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, pool, distance_weightin
     plt.xlabel("Iteration")
     plt.ylabel("Avg Relative Error")
     plt.savefig("results/" + fn_prefix + "perc_error.png")
+    """
     
     plt.cla()
     plt.scatter([trip.time for trip in train_set], [trip.estimated_time for trip in train_set], color="blue")
@@ -255,6 +256,7 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, pool, distance_weightin
     plt.ylabel("Percent Error")
     plt.savefig("results/" + fn_prefix + "perc_error_sorted.png")
     
+    """
     print("Average train error = " + str(train_avg[-1]))
     print("Average test error = " + str(test_avg[-1]))
     
