@@ -197,20 +197,21 @@ def output_trips(trips, filename):
     # num_fold - the K in k-fold cross validation
     # num_cpus - Will run this many folds in parallel
     # distance_weighting - the method for computing the weight.  see compute_weight()
-def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, distance_weighting=None, model_idle_time=False, initial_idle_time=0):
+def perform_cv(full_data, nodes_fn, links_fn, num_folds, pool, distance_weighting=None, model_idle_time=False, initial_idle_time=0):
     # shuffle(full_data)
 
     fn_prefix = dw_string(distance_weighting) + "_" + str(model_idle_time) + "_" + str(initial_idle_time)
     print ("Running " + str(fn_prefix) + " on " + str(len(full_data)) + " trips.")
 
 
+    print("Loading map")
     road_map = Map(nodes_fn, links_fn)
     road_map.flatten()
-    it = fold_iterator(full_data, road_map, num_folds, distance_weighting=distance_weighting, model_idle_time=False, initial_idle_time=initial_idle_time)
-    pool = Pool(num_cpus)
+    it = fold_iterator(full_data, road_map, num_folds, distance_weighting=distance_weighting, model_idle_time=model_idle_time, initial_idle_time=initial_idle_time)
+
     output_list = pool.map(run_fold, it)
     (train_avg, train_perc, test_avg, test_perc, train_set, test_set) = combine_outputs(output_list)
-    pool.terminate()
+
     
     
     fn_prefix = dw_string(distance_weighting) + "_" + str(model_idle_time) + "_" + str(initial_idle_time)
@@ -264,10 +265,12 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 1, distance_
     
 
 
-def try_idle_times(full_data, nodes_fn, links_fn, num_folds, num_cpus):
-    perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 8, distance_weighting=None, model_idle_time=False, initial_idle_time=0)
-    for idle_time in [0,10,20,30,40,50,100,200,300,400,500]:
-        perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 8, distance_weighting=None, model_idle_time=True, initial_idle_time=idle_time)
+def try_idle_times(full_data, nodes_fn, links_fn, num_folds, pool):
+    #perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 8, distance_weighting=None, model_idle_time=False, initial_idle_time=0)
+    interesting_idle_times = [0,10,20,30,40,50,100,200,300,400,500]
+    interesting_idle_times = [40,50,100,200,300,400,500]
+    for idle_time in interesting_idle_times:
+        perform_cv(full_data, nodes_fn, links_fn, num_folds, pool=pool, distance_weighting=None, model_idle_time=True, initial_idle_time=idle_time)
 
         
 
@@ -393,10 +396,11 @@ def try_many_kernels():
 
 
 if(__name__=="__main__"):
+    pool = Pool(1)
     print("Loading trips")
     trips = load_trips("sample_2.csv", 20000)
     #perform_learning_curve(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, distance_weighting=None)
-    try_idle_times(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8)
+    try_idle_times(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, pool=pool)
 
 
     

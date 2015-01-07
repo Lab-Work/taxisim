@@ -295,6 +295,7 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_
         outer_iter += 1
         if(DEBUG):
             print("################## OUTER LOOP " + str(outer_iter) + " ######################")
+            print(model_idle_time)
         
 
         
