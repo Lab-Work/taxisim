@@ -164,9 +164,10 @@ def combine_outputs(output_list):
     test_perc = avg_lists([test_perc_errors for (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors, train, test) in output_list])
     
     # Concatenate the trips from each training set, test set
-    train_set = [trip for (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors, train, test) in output_list for trip in train]
-    test_set = [trip for (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors, train, test) in output_list for trip in test]
-    
+    #train_set = [trip for (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors, train, test) in output_list for trip in train]
+    #test_set = [trip for (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors, train, test) in output_list for trip in test]
+    train_set = None
+    test_set = None
     return (train_avg, train_perc, test_avg, test_perc, train_set, test_set)
 
 # Outputs a table, which summarizes the predictions on both the training and test sets
