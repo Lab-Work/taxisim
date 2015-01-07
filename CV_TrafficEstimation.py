@@ -64,7 +64,7 @@ def run_fold((train, test, road_map, distance_weighting, model_idle_time, initia
     
     # Run the traffic estimation algorithm
     (iter_avg_errors, iter_perc_errors, test_avg_errors, test_perc_errors) = estimate_travel_times(
-        road_map, train, max_iter=2, test_set=test, distance_weighting=distance_weighting,
+        road_map, train, max_iter=20, test_set=test, distance_weighting=distance_weighting,
         model_idle_time=model_idle_time, initial_idle_time=initial_idle_time)
     
     # Remove the trips that were not estimated (duplicates and errors)
@@ -262,7 +262,7 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, pool, distance_weightin
 def try_idle_times(full_data, nodes_fn, links_fn, num_folds, pool):
     #perform_cv(full_data, nodes_fn, links_fn, num_folds, num_cpus = 8, distance_weighting=None, model_idle_time=False, initial_idle_time=0)
     interesting_idle_times = [0,10,20,30,40,50,100,200,300,400,500]
-    interesting_idle_times = [40,50,100,200,300,400,500]
+    #interesting_idle_times = [40,50,100,200,300,400,500]
     for idle_time in interesting_idle_times:
         perform_cv(full_data, nodes_fn, links_fn, num_folds, pool=pool, distance_weighting=None, model_idle_time=True, initial_idle_time=idle_time)
 
@@ -390,11 +390,11 @@ def try_many_kernels():
 
 
 if(__name__=="__main__"):
-    pool = Pool(2)
+    pool = Pool(8)
     print("Loading trips")
     trips = load_trips("sample_2.csv", 20000)
     #perform_learning_curve(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, distance_weighting=None)
-    try_idle_times(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 2, pool=pool)
+    try_idle_times(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, pool=pool)
 
 
     
