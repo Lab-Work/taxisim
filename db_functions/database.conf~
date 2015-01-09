@@ -1,0 +1,4 @@
+dbname='nyc_taxi_trip'
+user='postgres'
+host='trafficturk.hydrolab.illinois.edu'
+password='3117newmark'
