@@ -9,3 +9,4 @@ class Link:
         self.connecting_node = None
         
         self.link_id = 0
+        self.num_trips = 0

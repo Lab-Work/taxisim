@@ -17,7 +17,6 @@ def connect(db_conf_file):
     #Read the connection string from the configuration file
     with open(db_conf_file, 'r') as f:
         conn_string = f.read()
-    print conn_string
     #Set the connection object
     global db_con
     db_con = psycopg2.connect(conn_string)

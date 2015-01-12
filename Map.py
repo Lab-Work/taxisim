@@ -3,7 +3,8 @@ import csv
 from Node import Node
 from Link import Link
 from Trip import Trip
-from BiDirectionalSearch import *
+from BiDirectionalSearch import bidirectional_search
+from datetime import datetime
 
 # Represents a roadmap, has a set of Nodes and Links
 

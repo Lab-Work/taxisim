@@ -1,5 +1,5 @@
 from Node import *
-from Map import Map
+#from Map import Map
 from Queue import PriorityQueue
 from random import randint
 from datetime import datetime
