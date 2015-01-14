@@ -97,6 +97,13 @@ class Map:
                 link_speed = float(link.length) / link.time
                 max_speed = max(max_speed, link_speed)
         return max_speed
+    
+    def get_default_speed(self):
+        for link in self.links:
+            if(link != self.idle_link and link.num_trips==0):
+                link_speed = float(link.length) / link.time
+                return link_speed
+        return None
 
     def set_all_link_speeds(self, speed):
         for link in self.links:
