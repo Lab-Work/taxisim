@@ -7,8 +7,6 @@ Created on Fri Jan  9 15:08:51 2015
 @author: Brian Donovan (briandonovan100@gmail.com)
 """
 
-# TODO : Don't save all of the Links that have 0 trips on them, because they all have a default travel time
-# This redundant information accounts for ~95% of the data
 
 import db_main
 
