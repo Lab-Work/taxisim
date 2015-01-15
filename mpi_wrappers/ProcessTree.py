@@ -10,13 +10,67 @@ Created on Wed Jan 14 13:08:19 2015
 @author: Brian Donovan briandonovan100@gmail.com
 """
 
+from mpi4py import MPI
 
 
-
-# Work in progress
+# Represents a hierarchy of worker and manager processes.  This facilitates fast dissemination of
+# data to workers for efficient parallel computations
 class ProcessTree:
-    def __init__(self, branching_factor):
-        pass
+    
+    # Simple constructor.  Should be called by ALL MPI Processes
+    # Params:
+        # branching_factor - Max number of children each manager should have
+        # height - The height of the tree
+        # desired_leaves - should be less than branching_factor^height
+    def __init__(self, branching_factor, height, desired_leaves):
+        self.branching_factor = branching_factor
+        self.height = height
+        self.desired_leaves = desired_leaves
+        
+        self._id = MPI.COMM_WORLD.Get_rank()
+        self.parent_id = None
+        self.child_ids = []
+        self.leaf_sizes = []
+    
+    
+       
+    # Prepares the ProcessTree for use.  Should be called by ALL MPI Processes
+    # The parent process will organize the remaining processes into a hierarchy by telling them
+    # who their parent and children are
+    def prepare(self):
+        rank = MPI.COMM_WORLD.Get_rank()
+        if(rank==0):
+            # If we are the main process, build the tree to plan the computation
+            self.root, status = grow_tree(self.branching_factor, self.height, self.desired_leaves)
+            # Tell all of the other processes who their parent and children are
+            self._send_parents_and_children(self.root)
+
+        # Wait for the main process to tell us who our family is
+        # Note that the main process tells itself
+        self.parent_id, self.child_ids, self.leaf_sizes = MPI.COMM_WORLD.recv(source=0)
+        print ( str(self._id) + ") Parent: " + str(self.parent_id) + "  Children: " + str(self.child_ids) + "  Leaf_sizes: " + str(self.leaf_sizes))
+    
+    # Internal recursive method which should only be called by the MASTER MPI Process
+    # It tells each process who its parent and children are
+    # Params:
+        # ptnode - a node of the virtual process tree
+    def _send_parents_and_children(self, ptnode):
+            # Each PTNode's _id field corresponds to a MPI process id
+            # Tell that process who its parents and children are, and how many
+            # leaves are below each of its children
+            if(ptnode.parent==None):
+                parent_id = None
+            else:
+                parent_id = ptnode.parent._id
+            child_ids = ptnode.get_child_ids()
+            leaf_sizes = ptnode.get_child_leaf_sizes()
+            
+            MPI.COMM_WORLD.send((parent_id, child_ids, leaf_sizes), dest=ptnode._id)
+            
+            #Make the recursive call so the rest of the tree is also informed
+            for child in ptnode.children:
+                self._send_parents_and_children(child)
+        
 
 
 
@@ -53,6 +107,8 @@ class GrowStatus:
 class PTNode:
     is_leaf = False
     _id = -1
+    parent = None
+    leaf_size = 0    
     
     def __init__(self):
         pass
@@ -79,31 +135,43 @@ class PTNode:
         
         
         # This node is a leaf - mark it as such and end the recursion
+        self.children = []
         if(depth==status.height):
             self.is_leaf = True
             status.num_leaves += 1
+            self.leaf_size = 1
             # Return True since this Node is useful
             return True
         
         
         # Recursively grow children (# of children = bf)
-        self.children = []
+        # We will also sum up the leaf sizes of the children to make this node's leaf size
+        self.leaf_size = 0
         for i in range(status.bf):
             potential_child = PTNode()
             # Make the recursive call
             success = potential_child.grow(status, depth+1)
             #Only add that node to the list of children if it is useful, otherwise discard
             if(success):
+                potential_child.parent = self
                 self.children.append(potential_child)
+                self.leaf_size += potential_child.leaf_size
 
         # Return true since this node (and at least one of its children) is useful
         # This assumption is valid becaue we would have returned False earlier if
         # there were enough leaves.  Therefore, if we got to here, we had to make
         # more recursive calls and grow more leaves.
         return True
+    
+    def get_child_ids(self):
+        return [child._id for child in self.children]
+    
+    def get_child_leaf_sizes(self):
+        return [child.leaf_size for child in self.children]
 
 
 #  A simple test
 if(__name__=="__main__"):
-    root, status = grow_tree(22,5,75000)
-    print (status.num_nodes, status.num_leaves)
+    t = ProcessTree(3,3,15)
+    t.prepare()
+    
