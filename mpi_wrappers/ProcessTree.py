@@ -125,8 +125,12 @@ class ProcessTree:
             # Out of jobs - the remaining children are unnecessary
             if(start_pos >= len(args_list)):
                 break
-        
         num_useful_children = i+1
+
+        # Free memory - we don't need the data anymore
+        del(const_args)
+        del(args_list)
+
         
         # Now wait for all children to inform us that they are done
         # Only wait on children who were given a job (useful children)
