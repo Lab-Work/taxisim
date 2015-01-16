@@ -56,9 +56,8 @@ class ProcessTree:
     
     
     # Evaluates a function on many different inputs in parallel. It should
-    # only be called by the master process.  The number of jobs should be equal to the number
-    # of leaf nodes in the process tree.
-    # TODO: if len(args_list) > len(self.child_ids), repeat the process several times
+    # only be called by the master process. Does not return until ALL child
+    # processes are complete
     # Params:
         # func - the function to be run
         # const_args - Any arguments that are the same in all evaluations of the function.
@@ -67,7 +66,17 @@ class ProcessTree:
             # Can be a list of lists or tuples if the function requires multiple inputs
     def map(self, func, const_args, args_list):
         if(MPI.COMM_WORLD.Get_rank()==0):
-            self._map(func, const_args, args_list)
+            # The max number of jobs we can do in parallel is self.desired_leaves
+            # So we will cut args_list into slices of this size or smaller and process
+            # them individually
+            start_pos = 0
+            while(start_pos < len(args_list)):
+                end_pos = start_pos + self.desired_leaves # Create slice of correct size
+                end_pos = min(end_pos, len(args_list)) # Avoid array overflow
+                self._map(func, const_args, args_list[start_pos:end_pos])
+                
+                # Advance to the next slice
+                start_pos = end_pos
         else:
             raise Exception("close() should only be called by master process.")
     
@@ -99,19 +108,35 @@ class ProcessTree:
         # may not be perfectly symmetric, each child may not receive the same number of jobs.
         # The number of jobs should be the nuumber of leaf nodes beneath that child
         # (or 1 if that child is a leaf)
-        # TODO: if len(args_list) < len(child_ids), only use some of the children
         start_pos = 0
         for i in xrange(len(self.child_ids)):
+            # Create a slice that is the right size for that child
             end_pos = start_pos + self.leaf_sizes[i]
+            # Avoid array out of bounds, may send a job that is smaller than the capacity
+            end_pos = min(end_pos, len(args_list))
             
-            # Slice the args list
-            child_args = args_list[start_pos:end_pos]            
+            child_args = args_list[start_pos:end_pos] # Slice the args list
             
             # Send the data
             MPI.COMM_WORLD.send((func, const_args, child_args), dest=self.child_ids[i])
             
-            #Advance to the next slice
-            start_pos += self.leaf_sizes[i]
+            start_pos = end_pos # Advance to the next slice
+            
+            # Out of jobs - the remaining children are unnecessary
+            if(start_pos >= len(args_list)):
+                break
+        
+        num_useful_children = i+1
+        
+        # Now wait for all children to inform us that they are done
+        # Only wait on children who were given a job (useful children)
+        for i in xrange(num_useful_children):
+            done_msg = MPI.COMM_WORLD.recv(source=self.child_ids[i])
+            done_msg += ""
+        
+        # Finally, inform parent that we are done
+        if(self.parent_id!=None):
+            MPI.COMM_WORLD.send("done", dest=self.parent_id)
     
     
     
@@ -157,6 +182,8 @@ class ProcessTree:
                     # If this is a leaf node, just run the function
                     [args] = args_list
                     func(const_args, args)
+                    # Inform the parent that we are done
+                    MPI.COMM_WORLD.send("done", dest=self.parent_id)
                 else:
                     # If this is an internal node, split the args_list and send
                     # Everything to the children
@@ -275,7 +302,7 @@ if(__name__=="__main__"):
     
     if(MPI.COMM_WORLD.Get_rank()==0):
         a = 3 # Constant arguments
-        b_list = range(15) # List of arguments
+        b_list = range(51) # List of arguments
         t.map(times, a, b_list)
         t.close()
     
