@@ -14,16 +14,24 @@ rank = MPI.COMM_WORLD.Get_rank()
 name = MPI.Get_processor_name()
 
 
+
+def funcA(x):
+    print("A " + str(x))
+
+def funcB(x):
+    print("B " + str(x))
+
+
 print("Helloworld! I am process %d of %d on %s.\n" % (rank, size, name))
 
 if(rank==0):
-    comm.send("++++", dest=0)
-    comm.send("AAAA", dest=1)
-    comm.send("BBBB", dest=2)
-    comm.send("CCCC", dest=3)
+    comm.send(funcA, dest=0)
+    comm.send(funcB, dest=1)
+    comm.send(funcA, dest=2)
+    comm.send(funcB, dest=3)
 
 
-data = comm.recv(source=0)
-print("Process " + str(rank) + " received " + data)
+func = comm.recv(source=0)
+func(rank)
 
 

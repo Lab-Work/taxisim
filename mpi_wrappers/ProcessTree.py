@@ -36,7 +36,8 @@ class ProcessTree:
        
     # Prepares the ProcessTree for use.  Should be called by ALL MPI Processes
     # The parent process will organize the remaining processes into a hierarchy by telling them
-    # who their parent and children are
+    # who their parent and children are.
+    # This method will return for the master process, but workers will wait for instructions.
     def prepare(self):
         rank = MPI.COMM_WORLD.Get_rank()
         if(rank==0):
@@ -48,31 +49,120 @@ class ProcessTree:
         # Wait for the main process to tell us who our family is
         # Note that the main process tells itself
         self.parent_id, self.child_ids, self.leaf_sizes = MPI.COMM_WORLD.recv(source=0)
-        print ( str(self._id) + ") Parent: " + str(self.parent_id) + "  Children: " + str(self.child_ids) + "  Leaf_sizes: " + str(self.leaf_sizes))
+        # print ( str(self._id) + ") Parent: " + str(self.parent_id) + "  Children: " + str(self.child_ids) + "  Leaf_sizes: " + str(self.leaf_sizes))
+    
+        if(rank > 0):
+            self._wait_for_instructions()
+    
+    
+    # Evaluates a function on many different inputs in parallel. It should
+    # only be called by the master process.  The number of jobs should be equal to the number
+    # of leaf nodes in the process tree.
+    # TODO: if len(args_list) > len(self.child_ids), repeat the process several times
+    # Params:
+        # func - the function to be run
+        # const_args - Any arguments that are the same in all evaluations of the function.
+            # Can be a tuple or list if multiple arguments are required
+        # args_list - A list of arguments that may change between each evaluation.
+            # Can be a list of lists or tuples if the function requires multiple inputs
+    def map(self, func, const_args, args_list):
+        if(MPI.COMM_WORLD.Get_rank()==0):
+            self._map(func, const_args, args_list)
+        else:
+            raise Exception("close() should only be called by master process.")
+    
+    # Closes the ProcessTree, allowing all of the MPI Processes to escape.  Should only
+    # be called by the master process.
+    def close(self):
+        if(MPI.COMM_WORLD.Get_rank()==0):
+            self._close()
+        else:
+            raise Exception("close() should only be called by master process.")
+    
+    
+    # Internal method which tells all of the children of this process to close.
+    def _close(self):
+        # Send the close message to each child
+        for i in self.child_ids:
+            MPI.COMM_WORLD.send("close", dest=i)
+            
+    # Internal function which splits arg_list into pieces, and sends the corresponding
+    # jobs to the children nodes.
+    # Params:
+        # func - the function to be run
+        # const_args - Any arguments that are the same in all evaluations of the function.
+            # Can be a tuple or list if multiple arguments are required
+        # args_list - A list of arguments that may change between each evaluation.
+            # Can be a list of lists or tuples if the function requires multiple inputs
+    def _map(self, func, const_args, args_list):
+        # We must send the appropriate number of jobs to each child.  Since the tree
+        # may not be perfectly symmetric, each child may not receive the same number of jobs.
+        # The number of jobs should be the nuumber of leaf nodes beneath that child
+        # (or 1 if that child is a leaf)
+        # TODO: if len(args_list) < len(child_ids), only use some of the children
+        start_pos = 0
+        for i in xrange(len(self.child_ids)):
+            end_pos = start_pos + self.leaf_sizes[i]
+            
+            # Slice the args list
+            child_args = args_list[start_pos:end_pos]            
+            
+            # Send the data
+            MPI.COMM_WORLD.send((func, const_args, child_args), dest=self.child_ids[i])
+            
+            #Advance to the next slice
+            start_pos += self.leaf_sizes[i]
+    
+    
     
     # Internal recursive method which should only be called by the MASTER MPI Process
     # It tells each process who its parent and children are
     # Params:
         # ptnode - a node of the virtual process tree
     def _send_parents_and_children(self, ptnode):
-            # Each PTNode's _id field corresponds to a MPI process id
-            # Tell that process who its parents and children are, and how many
-            # leaves are below each of its children
-            if(ptnode.parent==None):
-                parent_id = None
-            else:
-                parent_id = ptnode.parent._id
-            child_ids = ptnode.get_child_ids()
-            leaf_sizes = ptnode.get_child_leaf_sizes()
-            
-            MPI.COMM_WORLD.send((parent_id, child_ids, leaf_sizes), dest=ptnode._id)
-            
-            #Make the recursive call so the rest of the tree is also informed
-            for child in ptnode.children:
-                self._send_parents_and_children(child)
+        # Each PTNode's _id field corresponds to a MPI process id
+        # Tell that process who its parents and children are, and how many
+        # leaves are below each of its children
+        if(ptnode.parent==None):
+            parent_id = None
+        else:
+            parent_id = ptnode.parent._id
+        child_ids = ptnode.get_child_ids()
+        leaf_sizes = ptnode.get_child_leaf_sizes()
         
-
-
+        MPI.COMM_WORLD.send((parent_id, child_ids, leaf_sizes), dest=ptnode._id)
+        
+        #Make the recursive call so the rest of the tree is also informed
+        for child in ptnode.children:
+            self._send_parents_and_children(child)
+    
+    # Internal method which should only be called by MPI Processes OTHER THAN THE MASTER
+    # It loops forever, waiting for the master to give it jobs or tell it to close
+    def _wait_for_instructions(self):
+        
+        while(True):
+            #Receive data from the parent
+            data = MPI.COMM_WORLD.recv(source=self.parent_id)
+            
+            if(data=="close"):
+                # First, kill all of the children
+                self._close()
+                # Then, exit the loop
+                break
+            else:
+                # Unpack the data
+                func, const_args, args_list = data
+                
+                if(self.child_ids==[]):
+                    # If this is a leaf node, just run the function
+                    [args] = args_list
+                    func(const_args, args)
+                else:
+                    # If this is an internal node, split the args_list and send
+                    # Everything to the children
+                    self._map(func, const_args, args_list)
+    
+        
 
 # Grows a tree of a given shape and size, if possible
 # Params:
@@ -163,15 +253,29 @@ class PTNode:
         # more recursive calls and grow more leaves.
         return True
     
+    # Returns the id numbers of each of this PTNode's children
     def get_child_ids(self):
         return [child._id for child in self.children]
     
+    # Returns the number of leaves underneath each of this PTNode's children
     def get_child_leaf_sizes(self):
         return [child.leaf_size for child in self.children]
 
 
+# A simple function for testing purposes
+def times(a,b):
+    print str(a) + " x " + str(b) + " = " + str(a*b)
+
 #  A simple test
 if(__name__=="__main__"):
+    # Build and prepare the process tree 
     t = ProcessTree(3,3,15)
     t.prepare()
+    
+    
+    if(MPI.COMM_WORLD.Get_rank()==0):
+        a = 3 # Constant arguments
+        b_list = range(15) # List of arguments
+        t.map(times, a, b_list)
+        t.close()
     
