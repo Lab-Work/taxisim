@@ -22,10 +22,12 @@ class ProcessTree:
         # branching_factor - Max number of children each manager should have
         # height - The height of the tree
         # desired_leaves - should be less than branching_factor^height
-    def __init__(self, branching_factor, height, desired_leaves):
+        # batch_size - the number of jobs to be performed on each leaf
+    def __init__(self, branching_factor, height, desired_leaves, batch_size=1):
         self.branching_factor = branching_factor
         self.height = height
         self.desired_leaves = desired_leaves
+        self.batch_size = batch_size
         
         self._id = MPI.COMM_WORLD.Get_rank()
         self.parent_id = None
@@ -111,7 +113,7 @@ class ProcessTree:
         start_pos = 0
         for i in xrange(len(self.child_ids)):
             # Create a slice that is the right size for that child
-            end_pos = start_pos + self.leaf_sizes[i]
+            end_pos = start_pos + self.leaf_sizes[i] * self.batch_size
             # Avoid array out of bounds, may send a job that is smaller than the capacity
             end_pos = min(end_pos, len(args_list))
             
@@ -183,9 +185,11 @@ class ProcessTree:
                 func, const_args, args_list = data
                 
                 if(self.child_ids==[]):
-                    # If this is a leaf node, just run the function
-                    [args] = args_list
-                    func(const_args, args)
+                    # If this is a leaf node, just run the function on the given inputs
+                    # If batch_size > 1, then run the function several times
+                    for args in args_list:
+                        func(const_args, args)
+                        
                     # Inform the parent that we are done
                     MPI.COMM_WORLD.send("done", dest=self.parent_id)
                 else:
@@ -295,18 +299,19 @@ class PTNode:
 
 # A simple function for testing purposes
 def times(a,b):
-    print str(a) + " x " + str(b) + " = " + str(a*b)
+    rank = MPI.COMM_WORLD.Get_rank()
+    print str(a) + " x " + str(b).rjust(3,"0") + " = " + str(a*b)
 
 #  A simple test
 if(__name__=="__main__"):
     # Build and prepare the process tree 
-    t = ProcessTree(3,3,15)
+    t = ProcessTree(3,3,15, batch_size=4)
     t.prepare()
     
     
     if(MPI.COMM_WORLD.Get_rank()==0):
         a = 3 # Constant arguments
-        b_list = range(51) # List of arguments
+        b_list = range(101) # List of arguments
         t.map(times, a, b_list)
         t.close()
     
