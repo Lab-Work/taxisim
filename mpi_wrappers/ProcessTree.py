@@ -4,6 +4,8 @@ Represents a tree of worker and manager processes for efficient parallel computi
 on distributed systems.  Is most useful when a large number of workers are required
 and when the amount of data that needs to be sent to them is large. In this case,
 a hierarchy of managers can all send data to their children workers at the same time.
+Managers also do work of their own once they have dispatched their children, for
+maximum CPU usage.
 
 Created on Wed Jan 14 13:08:19 2015
 
@@ -11,7 +13,7 @@ Created on Wed Jan 14 13:08:19 2015
 """
 
 from mpi4py import MPI
-
+from Queue import Queue
 
 # Represents a hierarchy of worker and manager processes.  This facilitates fast dissemination of
 # data to workers for efficient parallel computations
@@ -19,20 +21,18 @@ class ProcessTree:
     
     # Simple constructor.  Should be called by ALL MPI Processes
     # Params:
+        # desired_size - The number of desired nodes in the process tree
         # branching_factor - Max number of children each manager should have
-        # height - The height of the tree
-        # desired_leaves - should be less than branching_factor^height
-        # batch_size - the number of jobs to be performed on each leaf
-    def __init__(self, branching_factor, height, desired_leaves, batch_size=1):
+        # batch_size - the number of jobs to be performed on each node
+    def __init__(self, desired_size, branching_factor=2, batch_size=1):
+        self.desired_size = desired_size
         self.branching_factor = branching_factor
-        self.height = height
-        self.desired_leaves = desired_leaves
         self.batch_size = batch_size
         
         self._id = MPI.COMM_WORLD.Get_rank()
         self.parent_id = None
         self.child_ids = []
-        self.leaf_sizes = []
+        self.child_sizes = []
     
     
        
@@ -44,14 +44,15 @@ class ProcessTree:
         rank = MPI.COMM_WORLD.Get_rank()
         if(rank==0):
             # If we are the main process, build the tree to plan the computation
-            self.root, status = grow_tree(self.branching_factor, self.height, self.desired_leaves)
+            self.root = PTNode(self.desired_size, self.branching_factor)
+            self.root.grow()
+            
             # Tell all of the other processes who their parent and children are
             self._send_parents_and_children(self.root)
 
         # Wait for the main process to tell us who our family is
         # Note that the main process tells itself
-        self.parent_id, self.child_ids, self.leaf_sizes = MPI.COMM_WORLD.recv(source=0)
-        # print ( str(self._id) + ") Parent: " + str(self.parent_id) + "  Children: " + str(self.child_ids) + "  Leaf_sizes: " + str(self.leaf_sizes))
+        self.parent_id, self.child_ids, self.child_sizes = MPI.COMM_WORLD.recv(source=0)
     
         if(rank > 0):
             self._wait_for_instructions()
@@ -68,13 +69,15 @@ class ProcessTree:
             # Can be a list of lists or tuples if the function requires multiple inputs
     def map(self, func, const_args, args_list):
         if(MPI.COMM_WORLD.Get_rank()==0):
-            # The max number of jobs we can do in parallel is self.desired_leaves
+            # The max number of jobs we can do in parallel is self.desired_size
             # So we will cut args_list into slices of this size or smaller and process
             # them individually
             start_pos = 0
             while(start_pos < len(args_list)):
-                end_pos = start_pos + self.desired_leaves # Create slice of correct size
+                end_pos = start_pos + self.desired_size * self.batch_size # Create slice of correct size
                 end_pos = min(end_pos, len(args_list)) # Avoid array overflow
+                
+                # Process the job
                 self._map(func, const_args, args_list[start_pos:end_pos])
                 
                 # Advance to the next slice
@@ -106,14 +109,20 @@ class ProcessTree:
         # args_list - A list of arguments that may change between each evaluation.
             # Can be a list of lists or tuples if the function requires multiple inputs
     def _map(self, func, const_args, args_list):
+        # Grab the first batch of jobs for ourselves.  We will do that work after
+        # our children have been dispatched
+        first_batch = args_list[0:self.batch_size]
+        
+        
+        
+        
         # We must send the appropriate number of jobs to each child.  Since the tree
         # may not be perfectly symmetric, each child may not receive the same number of jobs.
-        # The number of jobs should be the nuumber of leaf nodes beneath that child
-        # (or 1 if that child is a leaf)
-        start_pos = 0
+        # The number of jobs should be size of that child's subtree (number of nodes including itself)
+        start_pos = self.batch_size # Start here instead of 0, since we saved a slice for ourselves
         for i in xrange(len(self.child_ids)):
             # Create a slice that is the right size for that child
-            end_pos = start_pos + self.leaf_sizes[i] * self.batch_size
+            end_pos = start_pos + self.child_sizes[i] * self.batch_size
             # Avoid array out of bounds, may send a job that is smaller than the capacity
             end_pos = min(end_pos, len(args_list))
             
@@ -128,6 +137,11 @@ class ProcessTree:
             if(start_pos >= len(args_list)):
                 break
         num_useful_children = i+1
+        
+        
+        # While children are working, do our own job
+        for args in first_batch:
+            func(const_args, args)
 
         # Free memory - we don't need the data anymore
         del(const_args)
@@ -159,9 +173,9 @@ class ProcessTree:
         else:
             parent_id = ptnode.parent._id
         child_ids = ptnode.get_child_ids()
-        leaf_sizes = ptnode.get_child_leaf_sizes()
+        child_sizes = ptnode.get_child_sizes()
         
-        MPI.COMM_WORLD.send((parent_id, child_ids, leaf_sizes), dest=ptnode._id)
+        MPI.COMM_WORLD.send((parent_id, child_ids, child_sizes), dest=ptnode._id)
         
         #Make the recursive call so the rest of the tree is also informed
         for child in ptnode.children:
@@ -197,115 +211,121 @@ class ProcessTree:
                     # Everything to the children
                     self._map(func, const_args, args_list)
     
-        
-
-# Grows a tree of a given shape and size, if possible
-# Params:
-    # bf - the desired branching factor of the tree
-    # height - the desired height of the tree
-    # desired_leaves - should be less than bf^height.  The tree will stop growing
-        # once this many leaves have been produced
-# Returns:
-    # root - a PTNode that represents the root of the tree
-    # status - a GrowStatus that contains some stats about the tree's size
-def grow_tree(bf, height, desired_leaves):
-    status = GrowStatus(bf, height, desired_leaves)
-    root = PTNode()
-    root.grow(status)
-    
-    return root, status
-
-# Tracks stats about the status of a tree's growing progress
-class GrowStatus:
-    num_nodes = 0
-    num_leaves = 0
-    def __init__(self, bf, height, desired_leaves):
-        self.bf = bf
-        self.height = height
-        self.desired_leaves = desired_leaves
-        
-        
 
 # Represents a Node in a tree, which is used to organize MPI processes into a hierarchy.
 # Note that there are no MPI calls in this class.  The master process should just build
 # a tree of PTNodes in order to plan the execution strategy.
 class PTNode:
-    is_leaf = False
     _id = -1
     parent = None
-    leaf_size = 0    
     
-    def __init__(self):
-        pass
-    
-    # Recursively grows children nodes until the tree is big enough
-    # Will stop growing once the tree is tall enough or has enough leaves
-    # Params:
-        # status - A GrowStatus that will be modified as the tree grows
-        # depth - How deep into the tree is this node?  Root is 0, children are 1, and so on
-    # Returns - True if this Node is useful (i.e. it expanded successfully), or
-        # False if we already have enough leaves and the tree is done growing.
-    def grow(self, status, depth=0):
-        
-        
-        #Tree is already big enough - stop growing it
-        if(status.num_leaves >= status.desired_leaves):
-            # Return false since this Node is not useful
-            return False
-        
-        # Continue growing
-        # Hand out an ID number to this node, and count it towards the total number of nodes
-        self._id = status.num_nodes
-        status.num_nodes += 1        
-        
-        
-        # This node is a leaf - mark it as such and end the recursion
+    def __init__(self, desired_size, branching_factor):
+        self.desired_size = desired_size
+        self.size = 1
+        self.branching_factor = branching_factor
         self.children = []
-        if(depth==status.height):
-            self.is_leaf = True
-            status.num_leaves += 1
-            self.leaf_size = 1
-            # Return True since this Node is useful
-            return True
+    
+    # Grows a tree of a given size and branching factor.  These are given by
+    # self.desired_size and self.branching_vactor
+    def grow(self):
+        # First, use BFS to create a tree of the desired size
+        q = Queue()
+        q.put(self)
+        num_nodes = 1
         
+        #Keep adding children to the existing nodes until the tree is too big
+        while(q.not_empty and num_nodes < self.desired_size):
+            node = q.get()            
+            
+            # Each node should have a certain number of children given by the branching factor
+            for i in xrange(self.branching_factor):
+                # We might hit the limit while in the middle of adding children to this node
+                if(num_nodes >= self.desired_size):
+                    break
+                
+                # Create the child and doubly link it to the parent
+                child = PTNode(self.desired_size, self.branching_factor)
+                child.parent = node
+                node.children.append(child)
+                
+                # Put into the queue so it can later get children of its own if necessary
+                q.put(child)
+                num_nodes += 1
+                
+        # Finally, recursively hand out ID numbers and sizes        
+        self._compute_ids_and_sizes(0)
+    
+    
+    # Internal method which recursively hands out ID numbers and sizes to a tree
+    # that has already been built.  Ids are handed out using BFS ordering, and the
+    # size indicates the number of nodes in this node's subtree (including this node)
+    def _compute_ids_and_sizes(self, start_id):
+        # This node starts with the given ID and size of 1
+        self._id = start_id
+        self.size = 1
         
-        # Recursively grow children (# of children = bf)
-        # We will also sum up the leaf sizes of the children to make this node's leaf size
-        self.leaf_size = 0
-        for i in range(status.bf):
-            potential_child = PTNode()
-            # Make the recursive call
-            success = potential_child.grow(status, depth+1)
-            #Only add that node to the list of children if it is useful, otherwise discard
-            if(success):
-                potential_child.parent = self
-                self.children.append(potential_child)
-                self.leaf_size += potential_child.leaf_size
-
-        # Return true since this node (and at least one of its children) is useful
-        # This assumption is valid becaue we would have returned False earlier if
-        # there were enough leaves.  Therefore, if we got to here, we had to make
-        # more recursive calls and grow more leaves.
-        return True
+        # Increment start id so there are no collisions
+        start_id += 1
+        
+        # Recursively call children
+        for child in self.children:
+            child._compute_ids_and_sizes(start_id)
+            
+            # We know that (child.size) IDs were handed out in the recursive call
+            # So increment by this much to avoid collisions
+            start_id += child.size
+            
+            # Include the child's size in this size
+            self.size += child.size
     
     # Returns the id numbers of each of this PTNode's children
     def get_child_ids(self):
         return [child._id for child in self.children]
     
-    # Returns the number of leaves underneath each of this PTNode's children
-    def get_child_leaf_sizes(self):
-        return [child.leaf_size for child in self.children]
+    # Returns the sizes of each child's subtree.  They should add up to one less than
+    # this node.size
+    def get_child_sizes(self):
+        return [child.size for child in self.children]
+    
+    def get_height(self):
+        if(self.children==[]):
+            return 0
+        child_heights = [child.get_height() for child in self.children]
+        return max(child_heights) + 1
+    
+    def get_num_leaves(self):
+        if(self.children==[]):
+            return 1
+        
+        child_leaves = [child.get_num_leaves() for child in self.children]
+        return sum(child_leaves)
+    
+    
+    # Debug method, which recursively p
+    def print_tree(self):
+        ptnode = self
+        if(ptnode.parent==None):
+            parent_id = None
+        else:
+            parent_id = ptnode.parent._id
+        child_ids = ptnode.get_child_ids()
+        print ( str(self._id) + ") Parent: " + str(parent_id) + "  Children: " + str(child_ids) + "  Size: " + str(self.size))
+        
+        for child in self.children:
+            child.print_tree()
 
 
 # A simple function for testing purposes
 def times(a,b):
     rank = MPI.COMM_WORLD.Get_rank()
-    print str(a) + " x " + str(b).rjust(3,"0") + " = " + str(a*b)
+    print str(a) + " x " + str(b).rjust(3,"0") + " = " + str(a*b) + "  [" + str(rank) + "]"
 
 #  A simple test
 if(__name__=="__main__"):
+
+    
     # Build and prepare the process tree 
-    t = ProcessTree(3,3,15, batch_size=4)
+    t = ProcessTree(23, 3, batch_size=4)
     t.prepare()
     
     
