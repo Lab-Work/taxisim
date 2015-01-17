@@ -287,16 +287,17 @@ class PTNode:
     def get_child_sizes(self):
         return [child.size for child in self.children]
     
+    # Returns the maximum height of the tree
     def get_height(self):
         if(self.children==[]):
             return 0
         child_heights = [child.get_height() for child in self.children]
         return max(child_heights) + 1
     
+    # Returns the total number of leaves in the tree
     def get_num_leaves(self):
         if(self.children==[]):
             return 1
-        
         child_leaves = [child.get_num_leaves() for child in self.children]
         return sum(child_leaves)
     
