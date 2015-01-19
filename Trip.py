@@ -11,18 +11,6 @@ from datetime import datetime
 from Node import approx_distance
 
 
-#An optimized datetime parser for UTC format - this is roughly 4x faster than datetime.strptime()
-#Credit to Alec Mori (ajmori2@illinois.edu)
-#Arguments:
-    #dateStr - a string in UTC format.
-#Returns:
-    #A datetime object
-def parseUtc(dateStr):
-    return datetime(year = int(dateStr[0:4]), month = int(dateStr[5:7]), day = int(dateStr[8:10]), hour = int(dateStr[11:13]), minute = int(dateStr[14:16]), second = int(dateStr[18:]))
-
-
-
-
 
 #A single taxi trip - contains information such as coordinates, times, etc...
 #Can be parsed from a line of a CSV file via the constructor
@@ -42,21 +30,22 @@ class Trip:
     #Constructs a Trip object using a line from a CSV file.  Assumes that Trip.initHeader() has already been called
     #Arguments:
         #csvLine - A list, which has been parsed from a CSV data file
-    def __init__(self, csvLine):
+    def __init__(self, record):
         #Store the actual data in case we need it later...
         #self.csvLine = csvLine
         
-        [medallion, hack_license, vendor_id, rate_code, store_and_fwd_flag, pickup_datetime, dropoff_datetime, 
-                 passenger_count, trip_time_in_secs, trip_distance, pickup_longitude, pickup_latitude, 
-                 dropoff_longitude, dropoff_latitude] = csvLine
+        print record
+        print len(record)
+        
+        [medallion, hack_license, vendor_id, rate_code, store_and_fwd_flag, pickup_datetime, dropoff_datetime, passenger_count, trip_time_in_secs, trip_distance, pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude, payment_type, fare_amount, surcharge, mta_tax, tip_amount, tolls_amount, pickup_geom, dropoff_geom, day_of_week, hours_of_day] = record
                  
 
         [self.fromLon, self.fromLat, self.toLon, self.toLat, self.dist] = map(float, 
                 [pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude, trip_distance])
         self.dist *= 1609.34 # convert to meters
     
-        self.pickup_time = parseUtc(pickup_datetime)
-        self.dropoff_time = parseUtc(dropoff_datetime)
+        self.pickup_time = pickup_datetime
+        self.dropoff_time = dropoff_datetime
 
 
 
@@ -91,6 +80,9 @@ class Trip:
             self.winding_factor = self.dist / self.straight_line_dist
         
         self.has_other_error=False
+
+    def displayTrip(self):
+        print "Medallion:\t\t\t\t", self.medallion, "\nHack license:\t\t\t\t", self.hack_license, "\nVendor ID:\t\t\t\t", self.vendor_id, rate_code, "\nRate code:\t\t\t\t", self.rate_code, "\nStore and fwd flag:\t\t\t", self.store_and_fwd_flag, "\nPickup datetime:\t\t\t", self.pickup_datetime, "\nDropoff datetime:\t\t\t", self.dropoff_datetime, "\nPassenger count:\t\t\t", self.passenger_count, "\nTrip time in secs:\t\t\t", self.trip_time_in_secs, "\nTrip distance:\t\t\t\t", self.trip_distance, "\nPickup longitude:\t\t\t", self.pickup_longitude, "\nPickup latitude:\t\t\t", self.pickup_latitude, "\nDropoff longitude:\t\t\t", self.dropoff_longitude, "\nDropoff latitude:\t\t\t", self.dropoff_latitude, "\nPayment type:\t\t\t\t", self.payment_type, "\nFare amount:\t\t\t\t", self.fare_amount, "\nSurcharge:\t\t\t\t", self.surcharge, "\nMTA tax:\t\t\t\t", self.mta_tax, "\nTip amount:\t\t\t\t", self.tip_amount, "\nTolls amount:\t\t\t\t", self.tolls_amount
     
     #All of the different types of errors that could occur - most are based on thresholds
     #An ERROR trip is one that is clearly impossible (e.g. a winding factor of .5, which violates Euclidean geometry)

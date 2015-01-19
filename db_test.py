@@ -5,7 +5,8 @@ Created on Sat Jan 10 21:12:41 2015
 @author: brian
 """
 
-from db_functions import db_main, db_travel_times
+from Trip import Trip
+from db_functions import db_main, db_travel_times, db_trip
 from Map import Map
 from datetime import datetime
 
@@ -14,6 +15,9 @@ from TrafficEstimation import *
 
 # Connect to the database
 db_main.connect("db_functions/database.conf")
+trips = db_trip.find_pickup_dt('2010-01-01 00:34:00', '2010-01-01 00:35:00')
+print len(trips)
+"""
 db_travel_times.drop_travel_time_table()
 db_travel_times.create_travel_time_table()
 
@@ -44,8 +48,6 @@ for i in range(20):
 
 size = db_travel_times.get_travel_time_table_size()
 print str(i) + " ) " + str(size)
-
-"""
 
 # Load travel times from the db
 start_time = datetime.now()
