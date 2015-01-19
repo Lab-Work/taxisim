@@ -4,9 +4,10 @@ Created on Mon Dec  8 14:15:54 2014
 
 @author: Brian Donovan (briandonovan100@gmail.com)
 """
-from BiDirectionalSearch import bidirectional_search
+from routing.BiDirectionalSearch import bidirectional_search
+from routing.Map import Map
+
 from Trip import Trip
-from Map import Map
 
 from datetime import datetime
 import csv
@@ -267,7 +268,7 @@ def compute_link_offsets(road_map, unique_trips, distance_weighting=None):
     # iter_perc_errors - A list of average percent errors at each iteration
     # test_avg_errors - A list of average absolute errors on the test set at each iteration
     # test_perc_errors - A list of average percent errors on the test set at each iteration
-def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_weighting=None, model_idle_time=True, initial_idle_time=0):
+def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_weighting=None, model_idle_time=False, initial_idle_time=0):
     #print("Estimating traffic.  use_distance_weighting=" + str(use_distance_weighting))
     DEBUG = False
     #Collapse identical trips    

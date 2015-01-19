@@ -2,7 +2,7 @@ from KDTree import KDTree
 import csv
 from Node import Node
 from Link import Link
-from Trip import Trip
+from traffic_estimation.Trip import Trip
 from BiDirectionalSearch import bidirectional_search
 from datetime import datetime
 

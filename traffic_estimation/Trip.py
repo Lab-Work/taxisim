@@ -7,8 +7,7 @@ Created on Wed Aug  6 14:17:57 2014
 @author: Brian Donovan (briandonovan100@gmail.com)
 """
 #from tools import *
-from datetime import datetime
-from Node import approx_distance
+from routing.Node import approx_distance
 
 
 
@@ -33,9 +32,6 @@ class Trip:
     def __init__(self, record):
         #Store the actual data in case we need it later...
         #self.csvLine = csvLine
-        
-        print record
-        print len(record)
         
         [medallion, hack_license, vendor_id, rate_code, store_and_fwd_flag, pickup_datetime, dropoff_datetime, passenger_count, trip_time_in_secs, trip_distance, pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude, payment_type, fare_amount, surcharge, mta_tax, tip_amount, tolls_amount, pickup_geom, dropoff_geom, day_of_week, hours_of_day] = record
                  

@@ -10,7 +10,7 @@ Created on Tuesday Jan 13 12:56:56 2015
 """
 
 import db_main
-from Trip import Trip
+from traffic_estimation.Trip import Trip
 
 
 #Fetch trips from database with pickup_datetime between two datetimes

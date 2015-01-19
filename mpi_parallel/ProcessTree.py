@@ -109,6 +109,7 @@ class ProcessTree:
         # args_list - A list of arguments that may change between each evaluation.
             # Can be a list of lists or tuples if the function requires multiple inputs
     def _map(self, func, const_args, args_list):
+        
         # Grab the first batch of jobs for ourselves.  We will do that work after
         # our children have been dispatched
         first_batch = args_list[0:self.batch_size]
