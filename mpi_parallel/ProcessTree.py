@@ -146,6 +146,7 @@ class ProcessTree:
             
             child_args = args_list[start_pos:end_pos] # Slice the args list
             
+            self.dbg("Sending jobs %d - %d to child %d" % (start_pos, end_pos, self.child_ids[i]))
             # Send the data
             MPI.COMM_WORLD.isend((func, const_args, child_args), dest=self.child_ids[i])
             
@@ -153,6 +154,7 @@ class ProcessTree:
             
             # Out of jobs - the remaining children are unnecessary
             if(start_pos >= len(args_list)):
+                self.dbg("Out of jobs")
                 break
         num_useful_children = i+1
         

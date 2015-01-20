@@ -17,6 +17,7 @@ from ProcessTree import ProcessTree
 
 
 def run_chunk(road_map, time):
+    print("Connecting to db")
     db_main.connect("db_functions/database.conf")
     
     print (str(datetime.now()) + " : Estimating traffic for " + str(time))
