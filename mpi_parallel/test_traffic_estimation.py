@@ -36,7 +36,7 @@ def run_chunk(road_map, time):
 
 def run_test():
     # Build and prepare the process tree 
-    t = ProcessTree(6)
+    t = ProcessTree(6, debug_mode=True)
     t.prepare()
     
     
