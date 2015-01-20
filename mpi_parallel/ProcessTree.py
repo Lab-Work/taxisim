@@ -14,6 +14,7 @@ Created on Wed Jan 14 13:08:19 2015
 
 from mpi4py import MPI
 from Queue import Queue
+from datetime import datetime
 
 # Represents a hierarchy of worker and manager processes.  This facilitates fast dissemination of
 # data to workers for efficient parallel computations
@@ -24,10 +25,14 @@ class ProcessTree:
         # desired_size - The number of desired nodes in the process tree
         # branching_factor - Max number of children each manager should have
         # batch_size - the number of jobs to be performed on each node
-    def __init__(self, desired_size, branching_factor=2, batch_size=1):
+    def __init__(self, desired_size, branching_factor=2, batch_size=1, debug_mode=False):
         self.desired_size = desired_size
         self.branching_factor = branching_factor
         self.batch_size = batch_size
+        self.debug_mode = debug_mode
+        
+        
+        self.dbg("__init__")        
         
         self._id = MPI.COMM_WORLD.Get_rank()
         self.parent_id = None
@@ -43,18 +48,24 @@ class ProcessTree:
     def prepare(self):
         rank = MPI.COMM_WORLD.Get_rank()
         if(rank==0):
+            
+            self.dbg("Growing tree")
             # If we are the main process, build the tree to plan the computation
             self.root = PTNode(self.desired_size, self.branching_factor)
             self.root.grow()
             
+            self.dbg("Sending tree to other processes")
             # Tell all of the other processes who their parent and children are
             self._send_parents_and_children(self.root)
 
+            self.dbg("Done")
         # Wait for the main process to tell us who our family is
         # Note that the main process tells itself
+        self.dbg("Receiving tree")
         self.parent_id, self.child_ids, self.child_sizes = MPI.COMM_WORLD.recv(source=0)
     
         if(rank > 0):
+            self.dbg("Waiting for instructions")
             self._wait_for_instructions()
     
     
@@ -78,6 +89,7 @@ class ProcessTree:
                 end_pos = min(end_pos, len(args_list)) # Avoid array overflow
                 
                 # Process the job
+                self.dbg("Running (%d - %d) / %d" % (start_pos, end_pos, len(args_list)))
                 self._map(func, const_args, args_list[start_pos:end_pos])
                 
                 # Advance to the next slice
@@ -96,6 +108,7 @@ class ProcessTree:
     
     # Internal method which tells all of the children of this process to close.
     def _close(self):
+        self.dbg("Closing")
         # Send the close message to each child
         for i in self.child_ids:
             MPI.COMM_WORLD.send("close", dest=i)
@@ -116,7 +129,7 @@ class ProcessTree:
         
         
         
-        
+        self.dbg("Sending jobs to children: " + str(self.child_ids))
         # We must send the appropriate number of jobs to each child.  Since the tree
         # may not be perfectly symmetric, each child may not receive the same number of jobs.
         # The number of jobs should be size of that child's subtree (number of nodes including itself)
@@ -140,6 +153,7 @@ class ProcessTree:
         num_useful_children = i+1
         
         
+        self.dbg("Evaluating function")
         # While children are working, do our own job
         for args in first_batch:
             func(const_args, args)
@@ -148,13 +162,14 @@ class ProcessTree:
         del(const_args)
         del(args_list)
 
-        
+        self.dbg("Waiting for children to return.")        
         # Now wait for all children to inform us that they are done
         # Only wait on children who were given a job (useful children)
         for i in xrange(num_useful_children):
             done_msg = MPI.COMM_WORLD.recv(source=self.child_ids[i])
             done_msg += ""
         
+        self.dbg("Finishing - inform parent %s" % str(self.parent_id))
         # Finally, inform parent that we are done
         if(self.parent_id!=None):
             MPI.COMM_WORLD.send("done", dest=self.parent_id)
@@ -189,6 +204,7 @@ class ProcessTree:
         while(True):
             #Receive data from the parent
             data = MPI.COMM_WORLD.recv(source=self.parent_id)
+            self.dbg("Received data")
             
             if(data=="close"):
                 # First, kill all of the children
@@ -200,6 +216,7 @@ class ProcessTree:
                 func, const_args, args_list = data
                 
                 if(self.child_ids==[]):
+                    self.dbg("I am a leaf")
                     # If this is a leaf node, just run the function on the given inputs
                     # If batch_size > 1, then run the function several times
                     for args in args_list:
@@ -208,9 +225,18 @@ class ProcessTree:
                     # Inform the parent that we are done
                     MPI.COMM_WORLD.send("done", dest=self.parent_id)
                 else:
+                    self.dbg("I am an internal node.")
                     # If this is an internal node, split the args_list and send
                     # Everything to the children
                     self._map(func, const_args, args_list)
+                    
+    # A method for printing debug messages
+    # Includes the MPI process ID and timestamp in the message
+    def dbg(self, msg):
+        if(self.debug_mode):
+            rank = MPI.COMM_WORLD.Get_rank()
+            t = datetime.now()
+            print( "(%d) [%s] %s" % (rank, str(t), msg))
     
 
 # Represents a Node in a tree, which is used to organize MPI processes into a hierarchy.
@@ -315,19 +341,23 @@ class PTNode:
         
         for child in self.children:
             child.print_tree()
+    
+    
 
 
 # A simple function for testing purposes
 def times(a,b):
     rank = MPI.COMM_WORLD.Get_rank()
-    print str(a) + " x " + str(b).rjust(3,"0") + " = " + str(a*b) + "  [" + str(rank) + "]"
+    t = datetime.now()
+    msg = str(a) + " x " + str(b).rjust(3,"0") + " = " + str(a*b)
+    print( "(%d) [%s] %s" % (rank, str(t), msg))
 
 #  A simple test
 if(__name__=="__main__"):
 
     
     # Build and prepare the process tree 
-    t = ProcessTree(23, 3, batch_size=4)
+    t = ProcessTree(23, 3, batch_size=4, debug_mode=True)
     t.prepare()
     
     
