@@ -62,7 +62,7 @@ class ProcessTree:
         # Wait for the main process to tell us who our family is
         # Note that the main process tells itself
         self.dbg("Receiving tree")
-        self.parent_id, self.child_ids, self.child_sizes = MPI.COMM_WORLD.recv(source=0)
+        self.parent_id, self.child_ids, self.child_sizes = MPI.COMM_WORLD.recv(source=0, tag=MPI.ANY_TAG)
     
         if(rank > 0):
             self.dbg("Waiting for instructions")
@@ -143,7 +143,7 @@ class ProcessTree:
             child_args = args_list[start_pos:end_pos] # Slice the args list
             
             # Send the data
-            MPI.COMM_WORLD.send((func, const_args, child_args), dest=self.child_ids[i])
+            MPI.COMM_WORLD.isend((func, const_args, child_args), dest=self.child_ids[i])
             
             start_pos = end_pos # Advance to the next slice
             
@@ -166,7 +166,7 @@ class ProcessTree:
         # Now wait for all children to inform us that they are done
         # Only wait on children who were given a job (useful children)
         for i in xrange(num_useful_children):
-            done_msg = MPI.COMM_WORLD.recv(source=self.child_ids[i])
+            done_msg = MPI.COMM_WORLD.recv(source=self.child_ids[i], tag=MPI.ANY_TAG)
             done_msg += ""
         
         self.dbg("Finishing - inform parent %s" % str(self.parent_id))
@@ -203,7 +203,7 @@ class ProcessTree:
         
         while(True):
             #Receive data from the parent
-            data = MPI.COMM_WORLD.recv(source=self.parent_id)
+            data = MPI.COMM_WORLD.recv(source=self.parent_id, tag=MPI.ANY_TAG)
             self.dbg("Received data")
             
             if(data=="close"):
