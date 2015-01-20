@@ -57,14 +57,18 @@ class ProcessTree:
             self.dbg("Sending tree to other processes")
             # Tell all of the other processes who their parent and children are
             self._send_parents_and_children(self.root)
+            
+            self.parent_id = None
+            self.child_ids = self.root.get_child_ids()
+            self.child_sizes = self.root.get_child_sizes()
 
             self.dbg("Done")
-        # Wait for the main process to tell us who our family is
-        # Note that the main process tells itself
-        self.dbg("Receiving tree")
-        self.parent_id, self.child_ids, self.child_sizes = MPI.COMM_WORLD.recv(source=0)
-    
-        if(rank > 0):
+        else:
+            # Wait for the main process to tell us who our family is
+            # Note that the main process tells itself
+            self.dbg("Receiving tree")
+            
+            self.parent_id, self.child_ids, self.child_sizes = MPI.COMM_WORLD.recv(source=0)
             self.dbg("Waiting for instructions")
             self._wait_for_instructions()
     
@@ -191,11 +195,16 @@ class ProcessTree:
         child_ids = ptnode.get_child_ids()
         child_sizes = ptnode.get_child_sizes()
         
-        MPI.COMM_WORLD.isend((parent_id, child_ids, child_sizes), dest=ptnode._id)
+        if(ptnode._id!=0):
+            request = MPI.COMM_WORLD.isend((parent_id, child_ids, child_sizes), dest=ptnode._id)
         
         #Make the recursive call so the rest of the tree is also informed
         for child in ptnode.children:
             self._send_parents_and_children(child)
+        
+        if(ptnode._id!=0):
+            MPI.Request.waitall([request])
+            
     
     # Internal method which should only be called by MPI Processes OTHER THAN THE MASTER
     # It loops forever, waiting for the master to give it jobs or tell it to close
@@ -236,7 +245,7 @@ class ProcessTree:
         if(self.debug_mode):
             rank = MPI.COMM_WORLD.Get_rank()
             t = datetime.now()
-            print( "(%d) [%s] %s" % (rank, str(t), msg))
+            print( "(%d) [%s] %s\n" % (rank, str(t), msg))
     
 
 # Represents a Node in a tree, which is used to organize MPI processes into a hierarchy.
@@ -350,8 +359,8 @@ def times(a,b):
     rank = MPI.COMM_WORLD.Get_rank()
     t = datetime.now()
     msg = str(a) + " x " + str(b).rjust(3,"0") + " = " + str(a*b)
-    print( "(%d) [%s] %s" % (rank, str(t), msg))
-    print str(a) + " x " + str(b).rjust(3,"0") + " = " + str(a*b) + "  [" + str(rank) + "]"
+    print( "(%d) [%s] %s\n" % (rank, str(t), msg))
+    #print str(a) + " x " + str(b).rjust(3,"0") + " = " + str(a*b) + "  [" + str(rank) + "]"
 
 #  A simple test
 if(__name__=="__main__"):
