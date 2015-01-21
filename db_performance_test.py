@@ -3,8 +3,8 @@ import time
 from threading import Timer
 from datetime import datetime
 import os
-TIME = 0
-REPEAT = 1
+TIME = 3600
+REPEAT = 24
 
 def test():
 	program_start = datetime.now()
