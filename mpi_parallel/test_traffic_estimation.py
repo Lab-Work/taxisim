@@ -34,6 +34,12 @@ def run_chunk(road_map, time):
     db_travel_times.save_travel_times(road_map, time)
 
 
+def do_nothing(road_map, time):
+    road_map.unflatten()
+    print ("Number of links in map " + str(len(road_map.links)))
+    
+
+
 
 def run_test():
     # Build and prepare the process tree 
@@ -47,11 +53,11 @@ def run_test():
         road_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv")
         road_map.flatten()            
         
-        db_main.connect("db_functions/database.conf")
-        db_travel_times.create_travel_time_table()
+        #db_main.connect("db_functions/database.conf")
+        #db_travel_times.create_travel_time_table()
         datelist = [datetime(year=2012, month=6, day=2, hour=h) for h in range(6)]
 
-        t.map(run_chunk, road_map, datelist)
+        t.map(do_nothing, road_map, datelist)
         t.close()
         
         d2 = datetime.now()

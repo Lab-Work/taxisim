@@ -12,9 +12,56 @@ Created on Wed Jan 14 13:08:19 2015
 @author: Brian Donovan briandonovan100@gmail.com
 """
 
+import cPickle as pickle
+
+
 from mpi4py import MPI
 from Queue import Queue
 from datetime import datetime
+
+
+
+
+def chunk_isend(obj, dest, chunk_size=1000000):
+    
+    pickled_obj = pickle.dumps(obj)
+    start_id = 0
+    requests = []
+    while(start_id < len(pickled_obj)):
+        
+        end_id = min(start_id + chunk_size, len(pickled_obj))
+        
+        request = MPI.COMM_WORLD.isend(pickled_obj[start_id:end_id], dest=dest) 
+        requests.append(request)
+        start_id = end_id
+        
+        if(len(requests) >=5):
+            print (" Waiting for ack")
+            MPI.Request.waitall(requests)
+        
+    MPI.Request.waitall(requests)
+        
+    
+    MPI.COMM_WORLD.isend("[[MSGOVER]]", dest=dest)
+    return request
+    
+
+def chunk_recv(source):
+    chunks = []
+    while(True):
+        msg = MPI.COMM_WORLD.recv(source=source)
+        print ("----- %d received msg of size %d" % (MPI.COMM_WORLD.Get_rank(), len(msg)))
+        if(msg=="[[MSGOVER]]"):
+            break
+        chunks.append(msg)
+        
+        
+    
+    pickled_obj = "".join(chunks)
+    return pickle.loads(pickled_obj)
+    
+
+
 
 # Represents a hierarchy of worker and manager processes.  This facilitates fast dissemination of
 # data to workers for efficient parallel computations
@@ -68,8 +115,8 @@ class ProcessTree:
             # Note that the main process tells itself
             self.dbg("Receiving tree")
             
-            self.parent_id, self.child_ids, self.child_sizes = MPI.COMM_WORLD.recv(source=0)
-            self.dbg("Waiting for instructions")
+            self.parent_id, self.child_ids, self.child_sizes = chunk_recv(source=0)
+            self.dbg("Waiting for instructions from parent %d"% (self.parent_id))
             self._wait_for_instructions()
     
     
@@ -115,7 +162,7 @@ class ProcessTree:
         self.dbg("Closing")
         # Send the close message to each child
         for i in self.child_ids:
-            MPI.COMM_WORLD.isend("close", dest=i)
+            chunk_isend("close", dest=i)
             
     # Internal function which splits arg_list into pieces, and sends the corresponding
     # jobs to the children nodes.
@@ -148,7 +195,12 @@ class ProcessTree:
             
             self.dbg("Sending jobs %d - %d to child %d" % (start_pos, end_pos, self.child_ids[i]))
             # Send the data
-            MPI.COMM_WORLD.isend((func, const_args, child_args), dest=self.child_ids[i])
+            # MPI.COMM_WORLD.isend((func, const_args, child_args), dest=self.child_ids[i])
+            chunk_isend((func, const_args, child_args), dest=self.child_ids[i])
+                        
+            
+            
+            
             
             start_pos = end_pos # Advance to the next slice
             
@@ -172,13 +224,13 @@ class ProcessTree:
         # Now wait for all children to inform us that they are done
         # Only wait on children who were given a job (useful children)
         for i in xrange(num_useful_children):
-            done_msg = MPI.COMM_WORLD.recv(source=self.child_ids[i])
+            done_msg = chunk_recv(source=self.child_ids[i])
             done_msg += ""
         
         self.dbg("Finishing - inform parent %s" % str(self.parent_id))
         # Finally, inform parent that we are done
         if(self.parent_id!=None):
-            MPI.COMM_WORLD.isend("done", dest=self.parent_id)
+            chunk_isend("done", dest=self.parent_id)
     
     
     
@@ -198,7 +250,7 @@ class ProcessTree:
         child_sizes = ptnode.get_child_sizes()
         
         if(ptnode._id!=0):
-            request = MPI.COMM_WORLD.isend((parent_id, child_ids, child_sizes), dest=ptnode._id)
+            request = chunk_isend((parent_id, child_ids, child_sizes), dest=ptnode._id)
         
         #Make the recursive call so the rest of the tree is also informed
         for child in ptnode.children:
@@ -214,7 +266,7 @@ class ProcessTree:
         
         while(True):
             #Receive data from the parent
-            data = MPI.COMM_WORLD.recv(source=self.parent_id)
+            data = chunk_recv(source=self.parent_id)
             self.dbg("Received data")
             
             if(data=="close"):
@@ -234,7 +286,7 @@ class ProcessTree:
                         func(const_args, args)
                         
                     # Inform the parent that we are done
-                    MPI.COMM_WORLD.isend("done", dest=self.parent_id)
+                    chunk_isend("done", dest=self.parent_id)
                 else:
                     self.dbg("I am an internal node.")
                     # If this is an internal node, split the args_list and send

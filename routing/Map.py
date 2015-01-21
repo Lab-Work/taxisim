@@ -118,16 +118,19 @@ class Map:
                              'start_lon',
                              'end_lat',
                              'end_lon',
-                             'speed'])
+                             'speed',
+                             'num_trips'])
             for link in self.links:
-                speed = link.length / link.time
-                writer.writerow([link.origin_node.node_id,
-                                 link.connecting_node.node_id,
-                                 link.origin_node.lat,
-                                 link.origin_node.long,
-                                 link.connecting_node.lat,
-                                 link.connecting_node.long,
-                                 speed])
+                if(link.time > 0):
+                    speed = link.length / link.time
+                    writer.writerow([link.origin_node.node_id,
+                                     link.connecting_node.node_id,
+                                     link.origin_node.lat,
+                                     link.origin_node.long,
+                                     link.connecting_node.lat,
+                                     link.connecting_node.long,
+                                     speed,
+                                     link.num_trips])
 
     # Builds the Map from CSV files describing the Nodes and LInks
     # Params:
