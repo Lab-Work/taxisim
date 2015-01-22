@@ -34,7 +34,8 @@ from datetime import datetime
 def chunk_send(obj, dest, chunk_size=1000000, ACK_INTERVAL=5):
     #First pickle the object
     pickled_obj = pickle.dumps(obj)
-    
+
+        
     start_id = 0
     requests = []
     # Iterate through chunks of the string
