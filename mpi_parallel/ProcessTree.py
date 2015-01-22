@@ -21,8 +21,16 @@ from datetime import datetime
 
 
 
+# Support function, so ProcessTree works with older versions of mpi4py
+# Newer versions could just use MPI.Request.waitall()
+# Params:
+    # A list of requests to wait on (each request is an output of MPI.COMM_WORLD.isend)
+def waitall(requests):
+    for req in requests:
+        MPI.Request.wait(req)
 
-# Utility method, which sends an object to another MPI process in chunks
+
+# Utility function, which sends an object to another MPI process in chunks
 # This results in more robust communication, since large messages seem to produce
 # unpredictable behavior.
 # Params:
@@ -51,14 +59,14 @@ def chunk_send(obj, dest, chunk_size=1000000, ACK_INTERVAL=5):
         
         # Every ACK_INTERVAL chunks, ensure that the receiver actually got them
         if(len(requests) >= ACK_INTERVAL):
-            MPI.Request.waitall(requests)
+            waitall(requests)
     
     # Inform the receiver that we are done
     request =  MPI.COMM_WORLD.isend("[[MSG_OVER]]", dest=dest)
     requests.append(request)
     
     # Ensure that the receiver got the last few chunks and the [[MSG_OVER]]
-    MPI.Request.waitall(requests)
+    waitall(requests)
         
    
     
@@ -84,6 +92,7 @@ def chunk_recv(source):
     pickled_obj = "".join(chunks)
     return pickle.loads(pickled_obj)
     
+
 
 
 
