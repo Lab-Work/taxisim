@@ -29,7 +29,8 @@ def run_chunk(road_map, time):
     print ("Loaded " + str(len(trips)) + " trips after " + str(t2 - t1))
 
     estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_weighting=None, model_idle_time=False, initial_idle_time=0)
-    print (str(datetime.now()) + " : Finished estimating traffic for " + str(time))
+    t3 = datetime.now()    
+    print (str(t3) + " : Finished estimating traffic for " + str(time) + " after " + str(t3-t2))
 
     t1 = datetime.now()
     db_travel_times.save_travel_times(road_map, time)
