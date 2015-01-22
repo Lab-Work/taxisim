@@ -47,7 +47,7 @@ def do_nothing(road_map, time):
 
 def run_test():
     # Build and prepare the process tree 
-    t = ProcessTree(3, debug_mode=True, batch_size=4)
+    t = ProcessTree(168, debug_mode=True, batch_size=4)
     t.prepare()
     
     
