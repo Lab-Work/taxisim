@@ -22,41 +22,64 @@ from datetime import datetime
 
 
 
-def chunk_isend(obj, dest, chunk_size=1000000):
-    
+# Utility method, which sends an object to another MPI process in chunks
+# This results in more robust communication, since large messages seem to produce
+# unpredictable behavior.
+# Params:
+    # obj - A picklable object to be sent
+    # dest - The MPI process ID, which we are sending to
+    # chunk_size - The pickled object will be cut into strings of this size before sending    
+    # ACK_INTERVAL - After every N chunks, verify that the other process has received
+        # before continuing
+def chunk_send(obj, dest, chunk_size=1000000, ACK_INTERVAL=5):
+    #First pickle the object
     pickled_obj = pickle.dumps(obj)
+    
     start_id = 0
     requests = []
+    # Iterate through chunks of the string
     while(start_id < len(pickled_obj)):
         
+        # Carefully avoid array overflow
         end_id = min(start_id + chunk_size, len(pickled_obj))
         
+        # Send the chunk, and remember the request ID
         request = MPI.COMM_WORLD.isend(pickled_obj[start_id:end_id], dest=dest) 
         requests.append(request)
         start_id = end_id
         
-        if(len(requests) >=5):
-            print (" Waiting for ack")
+        # Every ACK_INTERVAL chunks, ensure that the receiver actually got them
+        if(len(requests) >= ACK_INTERVAL):
             MPI.Request.waitall(requests)
-        
+    
+    # Inform the receiver that we are done
+    request =  MPI.COMM_WORLD.isend("[[MSG_OVER]]", dest=dest)
+    requests.append(request)
+    
+    # Ensure that the receiver got the last few chunks and the [[MSG_OVER]]
     MPI.Request.waitall(requests)
         
+   
     
-    MPI.COMM_WORLD.isend("[[MSGOVER]]", dest=dest)
-    return request
-    
-
+# The counterpart to chunk_send().  Receives a pickled object in several parts,
+# then reassembles it.
+# Params:
+        # source - The MPI process ID, which will send us strings
 def chunk_recv(source):
     chunks = []
+    # Keep receiving messages until [[MSGOVER]] is received
     while(True):
         msg = MPI.COMM_WORLD.recv(source=source)
-        print ("----- %d received msg of size %d" % (MPI.COMM_WORLD.Get_rank(), len(msg)))
-        if(msg=="[[MSGOVER]]"):
+        #print ("----- %d received msg of size %d" % (MPI.COMM_WORLD.Get_rank(), len(msg)))
+        
+        # If the special [[MSG_OVER]] string is received, we are done
+        if(msg=="[[MSG_OVER]]"):
             break
+        
+        # Otherwise, add the string to the list of received strings
         chunks.append(msg)
-        
-        
     
+    # Concatenate the strings, then unpickle
     pickled_obj = "".join(chunks)
     return pickle.loads(pickled_obj)
     
@@ -162,7 +185,7 @@ class ProcessTree:
         self.dbg("Closing")
         # Send the close message to each child
         for i in self.child_ids:
-            chunk_isend("close", dest=i)
+            chunk_send("[[CLOSE]]", dest=i)
             
     # Internal function which splits arg_list into pieces, and sends the corresponding
     # jobs to the children nodes.
@@ -196,7 +219,7 @@ class ProcessTree:
             self.dbg("Sending jobs %d - %d to child %d" % (start_pos, end_pos, self.child_ids[i]))
             # Send the data
             # MPI.COMM_WORLD.isend((func, const_args, child_args), dest=self.child_ids[i])
-            chunk_isend((func, const_args, child_args), dest=self.child_ids[i])
+            chunk_send((func, const_args, child_args), dest=self.child_ids[i])
                         
             
             
@@ -230,7 +253,7 @@ class ProcessTree:
         self.dbg("Finishing - inform parent %s" % str(self.parent_id))
         # Finally, inform parent that we are done
         if(self.parent_id!=None):
-            chunk_isend("done", dest=self.parent_id)
+            chunk_send("[[DONE]]", dest=self.parent_id)
     
     
     
@@ -249,15 +272,14 @@ class ProcessTree:
         child_ids = ptnode.get_child_ids()
         child_sizes = ptnode.get_child_sizes()
         
-        if(ptnode._id!=0):
-            request = chunk_isend((parent_id, child_ids, child_sizes), dest=ptnode._id)
+
+        chunk_send((parent_id, child_ids, child_sizes), dest=ptnode._id)
         
         #Make the recursive call so the rest of the tree is also informed
         for child in ptnode.children:
             self._send_parents_and_children(child)
         
-        if(ptnode._id!=0):
-            MPI.Request.waitall([request])
+
             
     
     # Internal method which should only be called by MPI Processes OTHER THAN THE MASTER
@@ -269,7 +291,7 @@ class ProcessTree:
             data = chunk_recv(source=self.parent_id)
             self.dbg("Received data")
             
-            if(data=="close"):
+            if(data=="[[CLOSE]]"):
                 # First, kill all of the children
                 self._close()
                 # Then, exit the loop
@@ -286,7 +308,7 @@ class ProcessTree:
                         func(const_args, args)
                         
                     # Inform the parent that we are done
-                    chunk_isend("done", dest=self.parent_id)
+                    chunk_send("[[DONE]]", dest=self.parent_id)
                 else:
                     self.dbg("I am an internal node.")
                     # If this is an internal node, split the args_list and send
