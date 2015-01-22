@@ -59,7 +59,7 @@ def run_test():
         
         #db_main.connect("db_functions/database.conf")
         #db_travel_times.create_travel_time_table()
-        datelist = [datetime(year=2012, month=6, day=2, hour=h) for h in range(12)]
+        datelist = [datetime(year=2012, month=6, day=24, hour=0) + timedelta(hours=1)*x for x in range(168)]
 
         t.map(run_chunk, road_map, datelist)
         t.close()
