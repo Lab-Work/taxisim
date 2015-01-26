@@ -105,6 +105,16 @@ def save_travel_times(road_map, datetime):
     db_main.commit()
 
 
+
+# Helper method, which 
+def get_travel_times_cursor(datetime):
+    # Execute the query
+    sql = "SELECT * FROM travel_times where datetime=%s ORDER BY (begin_node_id, end_node_id);"
+    cur = db_main.execute(sql, (datetime,))
+    return cur
+
+
+
 # Loads traffic conditions (link-by-link travel times) from the database and applies them onto
 # of a Map object.  After this is called, Link.time, Link.speed, and Link.num_trips
 # will be set for every Link in the Map.
@@ -116,8 +126,7 @@ def load_travel_times(road_map, datetime):
       
     
     # Execute the query
-    sql = "SELECT * FROM travel_times where datetime=%s ORDER BY (begin_node_id, end_node_id);"
-    cur = db_main.execute(sql, (datetime,))
+    cur = get_travel_times_cursor(datetime)
     
     i = 0
     # Iterate through the cursor returned by the query

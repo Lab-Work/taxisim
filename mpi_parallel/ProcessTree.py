@@ -84,6 +84,7 @@ def chunk_recv(source):
     
     # Concatenate the strings, then unpickle
     pickled_obj = "".join(chunks)
+    del(chunks)
     return pickle.loads(pickled_obj)
     
 

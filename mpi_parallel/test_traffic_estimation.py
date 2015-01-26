@@ -27,15 +27,18 @@ def run_chunk(road_map, time):
     trips = db_trip.find_pickup_dt(time, time + timedelta(hours=1))
     t2 = datetime.now()
     print ("Loaded " + str(len(trips)) + " trips after " + str(t2 - t1))
+    db_main.close()
 
     estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_weighting=None, model_idle_time=False, initial_idle_time=0)
     t3 = datetime.now()    
     print (str(t3) + " : Finished estimating traffic for " + str(time) + " after " + str(t3-t2))
 
+    db_main.connect("db_functions/database.conf")
     t1 = datetime.now()
     db_travel_times.save_travel_times(road_map, time)
     t2 = datetime.now()
     print("Saved travel times after " + str(t2 - t1))
+    db_main.close()
 
 
 def do_nothing(road_map, time):
@@ -48,7 +51,7 @@ def do_nothing(road_map, time):
 
 def run_test():
     # Build and prepare the process tree 
-    t = ProcessTree(168, debug_mode=True, batch_size=4)
+    t = ProcessTree(168, debug_mode=True, batch_size=1)
     t.prepare()
     
     

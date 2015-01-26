@@ -5,7 +5,7 @@ And queries can be executed
 """
 
 import psycopg2
-
+from time import sleep
 
 db_con = None
 
@@ -13,13 +13,33 @@ db_con = None
 # Params:
     # db_conf_file - contains the connection string
     # (which should include databse name, host, user, password)
-def connect(db_conf_file):
+def connect(db_conf_file, retry_interval=-1):
     #Read the connection string from the configuration file
     with open(db_conf_file, 'r') as f:
         conn_string = f.read()
-    #Set the connection object
     global db_con
-    db_con = psycopg2.connect(conn_string)
+    
+    # If retry_interval >= 0, keep trying until the connection is successful
+    while(retry_interval >= 0):
+        try:
+            # Try to connect to the database - this sets the global db_con object
+            db_con = psycopg2.connect(conn_string)
+            return
+        except psycopg2.OperationalError as e:
+            if(retry_interval >=0):
+                # If the connection fails and retry_interval >=0, try again
+                sleep(retry_interval)
+            else:
+                # If the connection fails and retry_interval < 0, raise the error
+                raise e
+                
+
+# Closes the connection to the database.  No more execute() queries can be run
+# after the connection has been closed
+def close():
+    global db_con
+    db_con.close()
+    db_con = None
 
 # Executes queries to an open databse connection
 # Params:
