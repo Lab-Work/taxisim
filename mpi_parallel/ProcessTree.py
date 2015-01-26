@@ -31,7 +31,7 @@ from datetime import datetime
     # chunk_size - The pickled object will be cut into strings of this size before sending    
     # ACK_INTERVAL - After every N chunks, verify that the other process has received
         # before continuing
-def chunk_send(obj, dest, chunk_size=1000000, ACK_INTERVAL=1):
+def chunk_send(obj, dest, chunk_size=1000000, ACK_INTERVAL=10):
     #First pickle the object
     pickled_obj = pickle.dumps(obj)
 
@@ -51,12 +51,13 @@ def chunk_send(obj, dest, chunk_size=1000000, ACK_INTERVAL=1):
         
         # Every ACK_INTERVAL chunks, ensure that the receiver actually got them
         if(len(requests) >= ACK_INTERVAL):
-            print("%d ) waiting for ack %s " % (MPI.COMM_WORLD.Get_rank(), str(requests)) )
+            # print("%d ) waiting for ack %s " % (MPI.COMM_WORLD.Get_rank(), str(requests)) )
             MPI.Request.Waitall(requests)
-            print("%d ) got it. " % (MPI.COMM_WORLD.Get_rank()) )
+            # print("%d ) got it. " % (MPI.COMM_WORLD.Get_rank()) )
+            requests = []
     
     # Inform the receiver that we are done
-    request =  MPI.COMM_WORLD.isend("[[MSG_OVER]]", dest=dest)
+    request = MPI.COMM_WORLD.isend("[[MSG_OVER]]", dest=dest)
     requests.append(request)
     
     # Ensure that the receiver got the last few chunks and the [[MSG_OVER]]
@@ -73,7 +74,7 @@ def chunk_recv(source):
     # Keep receiving messages until [[MSGOVER]] is received
     while(True):
         msg = MPI.COMM_WORLD.recv(source=source)
-        print ("----- %d received msg of size %d" % (MPI.COMM_WORLD.Get_rank(), len(msg)))
+        # print ("----- %d received msg of size %d" % (MPI.COMM_WORLD.Get_rank(), len(msg)))
         
         # If the special [[MSG_OVER]] string is received, we are done
         if(msg=="[[MSG_OVER]]"):
@@ -274,11 +275,9 @@ class ProcessTree:
             parent_id = None
         else:
             parent_id = ptnode.parent._id
-        child_ids = ptnode.get_child_ids()
-        child_sizes = ptnode.get_child_sizes()
-        
-
-        chunk_send((parent_id, child_ids, child_sizes), dest=ptnode._id)
+            child_ids = ptnode.get_child_ids()
+            child_sizes = ptnode.get_child_sizes()
+            chunk_send((parent_id, child_ids, child_sizes), dest=ptnode._id)
         
         #Make the recursive call so the rest of the tree is also informed
         for child in ptnode.children:
