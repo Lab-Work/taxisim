@@ -31,7 +31,7 @@ from datetime import datetime
     # chunk_size - The pickled object will be cut into strings of this size before sending    
     # ACK_INTERVAL - After every N chunks, verify that the other process has received
         # before continuing
-def chunk_send(obj, dest, chunk_size=1000000, ACK_INTERVAL=5):
+def chunk_send(obj, dest, chunk_size=1000000, ACK_INTERVAL=1):
     #First pickle the object
     pickled_obj = pickle.dumps(obj)
 
@@ -51,7 +51,9 @@ def chunk_send(obj, dest, chunk_size=1000000, ACK_INTERVAL=5):
         
         # Every ACK_INTERVAL chunks, ensure that the receiver actually got them
         if(len(requests) >= ACK_INTERVAL):
+            print("%d ) waiting for ack %s " % (MPI.COMM_WORLD.Get_rank(), str(requests)) )
             MPI.Request.Waitall(requests)
+            print("%d ) got it. " % (MPI.COMM_WORLD.Get_rank()) )
     
     # Inform the receiver that we are done
     request =  MPI.COMM_WORLD.isend("[[MSG_OVER]]", dest=dest)
@@ -71,7 +73,7 @@ def chunk_recv(source):
     # Keep receiving messages until [[MSGOVER]] is received
     while(True):
         msg = MPI.COMM_WORLD.recv(source=source)
-        #print ("----- %d received msg of size %d" % (MPI.COMM_WORLD.Get_rank(), len(msg)))
+        print ("----- %d received msg of size %d" % (MPI.COMM_WORLD.Get_rank(), len(msg)))
         
         # If the special [[MSG_OVER]] string is received, we are done
         if(msg=="[[MSG_OVER]]"):
@@ -445,7 +447,7 @@ if(__name__=="__main__"):
 
     
     # Build and prepare the process tree 
-    t = ProcessTree(23, 3, batch_size=4, debug_mode=True)
+    t = ProcessTree(16, 3, batch_size=4, debug_mode=True)
     t.prepare()
     
     
