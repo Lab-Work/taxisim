@@ -1,0 +1,21 @@
+#!/bin/bash
+#SBATCH -J parallel_traffic
+#SBATCH -n 176
+#SBATCH -t 04:00:00
+#SBATCH -p normal
+
+
+module load intel/14.0.1.106
+module load mvapich2/2.0b
+module load python/2.7.6
+module load mpi4py
+
+cd /home1/03172/dbwork/taxisim
+
+
+
+export PATH=$PATH:/opt/apps/intel14/mvapich2_2_0/python/2.7.6/lib/python2.7/site-packages/mpi4py/bin
+export MV2_SMP_USE_LIMIC2=0
+
+ibrun -np 168 python-mpi parallel_test.py &> parallel_out.txt
+
