@@ -36,8 +36,11 @@ class Trip:
         [medallion, hack_license, vendor_id, rate_code, store_and_fwd_flag, pickup_datetime, dropoff_datetime, passenger_count, trip_time_in_secs, trip_distance, pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude, payment_type, fare_amount, surcharge, mta_tax, tip_amount, tolls_amount, pickup_geom, dropoff_geom, day_of_week, hours_of_day] = record
                  
 
-        [self.fromLon, self.fromLat, self.toLon, self.toLat, self.dist] = map(float, 
-                [pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude, trip_distance])
+        try:
+            [self.fromLon, self.fromLat, self.toLon, self.toLat, self.dist] = map(float, 
+                    [pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude, trip_distance])
+        except:
+            [self.fromLon, self.fromLat, self.toLon, self.toLat, self.dist] = 0
         self.dist *= 1609.34 # convert to meters
     
         self.pickup_time = pickup_datetime
