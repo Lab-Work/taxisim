@@ -18,7 +18,7 @@ from ProcessTree import ProcessTree
 
 def run_chunk(road_map, time):
     print("Connecting to db")
-    db_main.connect("db_functions/database.conf")
+    db_main.connect("db_functions/database.conf", retry_interval=10)
     
     print (str(datetime.now()) + " : Estimating traffic for " + str(time))
     road_map.unflatten()
@@ -33,7 +33,7 @@ def run_chunk(road_map, time):
     t3 = datetime.now()    
     print (str(t3) + " : Finished estimating traffic for " + str(time) + " after " + str(t3-t2))
 
-    db_main.connect("db_functions/database.conf")
+    db_main.connect("db_functions/database.conf", retry_interval=10)
     t1 = datetime.now()
     db_travel_times.save_travel_times(road_map, time)
     t2 = datetime.now()
