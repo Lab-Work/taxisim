@@ -40,7 +40,7 @@ class Trip:
             [self.fromLon, self.fromLat, self.toLon, self.toLat, self.dist] = map(float, 
                     [pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude, trip_distance])
         except:
-            [self.fromLon, self.fromLat, self.toLon, self.toLat, self.dist] = 0
+            [self.fromLon, self.fromLat, self.toLon, self.toLat, self.dist] = [0.0]*5
         self.dist *= 1609.34 # convert to meters
     
         self.pickup_time = pickup_datetime
