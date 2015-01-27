@@ -10,6 +10,7 @@ from datetime import datetime
 
 
 class Map:
+    reasonable_nyc_bbox = (-74.3, 40.9, -73.85, 40.65)
     min_lat = float('inf')
     max_lat = float('-inf')
     min_lon = float('inf')
@@ -140,12 +141,21 @@ class Map:
         # be small for fastest performance
         # region_id_size - the leaf_size for the region kd tree.  Should be
         # large
+        # limit_bbox - An optional bounding box for limiting the size of the graph.
+            # Nodes/Links outside of this box will be ignored.
+            # Should be a tuple (left_lon, top_lat, right_lon, bottom_lat)
     def __init__(
             self,
             nodes_fn,
             links_fn,
             lookup_kd_size=1,
-            region_kd_size=1000):
+            region_kd_size=1000,
+            limit_bbox = None):
+        
+        if(limit_bbox!=None):
+            (left_lon, top_lat, right_lon, bottom_lat) = limit_bbox
+
+        
         
         #Save the filenames for future reference
         self.nodes_fn = nodes_fn
@@ -181,18 +191,22 @@ class Map:
 
                 # grow the bounds of the map if necessary
                 [latitude, longitude] = map(float, [latitude, longitude])
-                self.min_lat = min(self.min_lat, latitude)
-                self.max_lat = max(self.max_lat, latitude)
-                self.min_lon = min(self.min_lon, longitude)
-                self.max_lon = max(self.min_lon, longitude)
-
-                node = Node(
-                    int(begin_node_id),
-                    latitude,
-                    longitude,
-                    int(region_id))
-                self.nodes.append(node)
-                self.nodes_by_id[node.node_id] = node
+                
+                if(limit_bbox==None or (latitude > bottom_lat and latitude < top_lat and
+                    longitude > left_lon and longitude < right_lon)):                
+                    
+                    self.min_lat = min(self.min_lat, latitude)
+                    self.max_lat = max(self.max_lat, latitude)
+                    self.min_lon = min(self.min_lon, longitude)
+                    self.max_lon = max(self.min_lon, longitude)
+    
+                    node = Node(
+                        int(begin_node_id),
+                        latitude,
+                        longitude,
+                        int(region_id))
+                    self.nodes.append(node)
+                    self.nodes_by_id[node.node_id] = node
 
         # read Links file and create links
         with open(links_fn, "r") as f:
@@ -225,6 +239,7 @@ class Map:
                 # them
                 if(begin_node_id in self.nodes_by_id and
                    end_node_id in self.nodes_by_id):
+                       
                     begin_node = self.nodes_by_id[begin_node_id]
                     end_node = self.nodes_by_id[end_node_id]
 
@@ -448,9 +463,26 @@ def test_flatten():
     nyc_map.unflatten()
     d4 = datetime.now()
     print(d4 - d3)
+
+# memory usage of this process in MB
+def getmem():
+    import resource
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000.0
+
+def test_memory_usage():
+    bbox = (-74.3, 40.9, -73.85, 40.65)
+    print("Before: %f" % getmem())
+    nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv", limit_bbox=bbox)
+    print("After : %f" % getmem())
+    del(nyc_map)
+    print("After delete : %f" % getmem())
+    
+    nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv", limit_bbox=bbox)
+    print("Trimmed map : %f " % getmem())
+    
     
 
 if(__name__ == "__main__"):
     # benchmark_node_lookup()
     #test_region_ids()
-    test_flatten()
+    test_memory_usage()

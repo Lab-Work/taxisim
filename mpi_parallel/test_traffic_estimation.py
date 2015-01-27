@@ -41,7 +41,7 @@ def run_chunk(road_map, time):
         t2 = datetime.now()
         print("Saved travel times after " + str(t2 - t1))
         db_main.close()
-    except Exception as e:
+    except NotImplementedError as e:
         print("Failed to estimate traffic for %s" % str(time))
         print(e.message)
         
@@ -57,14 +57,14 @@ def do_nothing(road_map, time):
 
 def run_test():
     # Build and prepare the process tree 
-    t = LoadBalancedProcessTree(8, debug_mode=True)
+    t = LoadBalancedProcessTree(3, debug_mode=True)
     t.prepare()
     
     
     if(MPI.COMM_WORLD.Get_rank()==0):
         d1 = datetime.now()
         print("Loading map")
-        road_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv")
+        road_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv", Map.reasonable_nyc_bbox)
         road_map.flatten()            
         
         #db_main.connect("db_functions/database.conf")
