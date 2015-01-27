@@ -28,6 +28,10 @@ def run_chunk(road_map, time):
     t2 = datetime.now()
     print ("Loaded " + str(len(trips)) + " trips after " + str(t2 - t1))
     db_main.close()
+    
+    if(len(trips) < 10):
+        print ("Skipping " + str(time))
+        return
 
     estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_weighting=None, model_idle_time=False, initial_idle_time=0)
     t3 = datetime.now()    
