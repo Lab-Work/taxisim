@@ -13,36 +13,38 @@ from traffic_estimation.TrafficEstimation import estimate_travel_times
 from routing.Map import Map
 
 from db_functions import db_main, db_trip, db_travel_times
-from ProcessTree import ProcessTree
+from LoadBalancedProcessTree import LoadBalancedProcessTree
 
 
 def run_chunk(road_map, time):
-    print("Connecting to db")
-    db_main.connect("db_functions/database.conf", retry_interval=10)
+    try:
+        print("Connecting to db")
+        db_main.connect("db_functions/database.conf", retry_interval=10)
+        
+        print (str(datetime.now()) + " : Estimating traffic for " + str(time))
+        road_map.unflatten()
     
-    print (str(datetime.now()) + " : Estimating traffic for " + str(time))
-    road_map.unflatten()
-
-    t1 = datetime.now()    
-    trips = db_trip.find_pickup_dt(time, time + timedelta(hours=1))
-    t2 = datetime.now()
-    print ("Loaded " + str(len(trips)) + " trips after " + str(t2 - t1))
-    db_main.close()
+        t1 = datetime.now()    
+        trips = db_trip.find_pickup_dt(time, time + timedelta(hours=1))
+        t2 = datetime.now()
+        print ("Loaded " + str(len(trips)) + " trips after " + str(t2 - t1))
+        db_main.close()
     
-    if(len(trips) < 10):
-        print ("Skipping " + str(time))
-        return
-
-    estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_weighting=None, model_idle_time=False, initial_idle_time=0)
-    t3 = datetime.now()    
-    print (str(t3) + " : Finished estimating traffic for " + str(time) + " after " + str(t3-t2))
-
-    db_main.connect("db_functions/database.conf", retry_interval=10)
-    t1 = datetime.now()
-    db_travel_times.save_travel_times(road_map, time)
-    t2 = datetime.now()
-    print("Saved travel times after " + str(t2 - t1))
-    db_main.close()
+    
+        estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_weighting=None, model_idle_time=False, initial_idle_time=0)
+        t3 = datetime.now()    
+        print (str(t3) + " : Finished estimating traffic for " + str(time) + " after " + str(t3-t2))
+    
+        db_main.connect("db_functions/database.conf", retry_interval=10)
+        t1 = datetime.now()
+        db_travel_times.save_travel_times(road_map, time)
+        t2 = datetime.now()
+        print("Saved travel times after " + str(t2 - t1))
+        db_main.close()
+    except Exception as e:
+        print("Failed to estimate traffic for %s" % str(time))
+        print(e.message)
+        
 
 
 def do_nothing(road_map, time):
@@ -55,7 +57,7 @@ def do_nothing(road_map, time):
 
 def run_test():
     # Build and prepare the process tree 
-    t = ProcessTree(8, debug_mode=True, batch_size=26)
+    t = LoadBalancedProcessTree(8, debug_mode=True)
     t.prepare()
     
     
@@ -67,7 +69,7 @@ def run_test():
         
         #db_main.connect("db_functions/database.conf")
         #db_travel_times.create_travel_time_table()
-        datelist = [datetime(year=2010, month=1, day=6, hour=10) + timedelta(days=7)*x for x in range(207)]
+        datelist = [datetime(year=2010, month=1, day=6, hour=9) + timedelta(days=7)*x for x in range(207)]
 
         t.map(run_chunk, road_map, datelist)
         t.close()
