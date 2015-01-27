@@ -55,7 +55,7 @@ def do_nothing(road_map, time):
 
 def run_test():
     # Build and prepare the process tree 
-    t = ProcessTree(168, debug_mode=True, batch_size=1)
+    t = ProcessTree(8, debug_mode=True, batch_size=26)
     t.prepare()
     
     
@@ -67,7 +67,7 @@ def run_test():
         
         #db_main.connect("db_functions/database.conf")
         #db_travel_times.create_travel_time_table()
-        datelist = [datetime(year=2012, month=6, day=24, hour=0) + timedelta(hours=1)*x for x in range(168)]
+        datelist = [datetime(year=2010, month=1, day=6, hour=10) + timedelta(days=7)*x for x in range(207)]
 
         t.map(run_chunk, road_map, datelist)
         t.close()
@@ -75,4 +75,3 @@ def run_test():
         d2 = datetime.now()
         
         print("Total time : " + str(d2 - d1))
-    
