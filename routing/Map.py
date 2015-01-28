@@ -290,12 +290,12 @@ class Map:
 
         #First find the nearest origin/destination nodes for each trip
         #We will also find duplicate trips (same origin,destination nodes)
-        for trip in trips:y
+        for trip in trips:
             if(trip.isValid() == Trip.VALID):
                 trip.num_occurrences = 1
                 trip.origin_node = self.get_nearest_node(trip.fromLat, trip.fromLon)
                 trip.dest_node = self.get_nearest_node(trip.toLat, trip.toLon)
-       
+
                 if((trip.origin_node, trip.dest_node) in trip_lookup):
                     #Already seen this trip at least once
                     trip_lookup[trip.origin_node, trip.dest_node].num_occurrences += 1

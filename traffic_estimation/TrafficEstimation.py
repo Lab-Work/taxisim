@@ -271,7 +271,7 @@ def compute_link_offsets(road_map, unique_trips, distance_weighting=None):
 def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_weighting=None, model_idle_time=False, initial_idle_time=0):
     #print("Estimating traffic.  use_distance_weighting=" + str(use_distance_weighting))
     DEBUG = False
-    #Collapse identical trips    
+    #Collapse identical trips
     unique_trips = road_map.match_trips_to_nodes(trips)
     if(len(unique_trips) == 0):
         raise Exception("No trips to estimate traffic.")
