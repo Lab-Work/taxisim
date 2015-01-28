@@ -20,7 +20,9 @@ def connect(db_conf_file, retry_interval=-1):
     global db_con
     
     # If retry_interval >= 0, keep trying until the connection is successful
-    while(retry_interval >= 0):
+    try_again = True
+    while(try_again):
+        try_again = False
         try:
             # Try to connect to the database - this sets the global db_con object
             db_con = psycopg2.connect(conn_string)
@@ -29,6 +31,7 @@ def connect(db_conf_file, retry_interval=-1):
             if(retry_interval >=0):
                 # If the connection fails and retry_interval >=0, try again
                 sleep(retry_interval)
+                try_again = True
             else:
                 # If the connection fails and retry_interval < 0, raise the error
                 raise e
