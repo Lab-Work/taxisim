@@ -128,6 +128,9 @@ def load_travel_times(road_map, datetime):
     # Execute the query
     cur = get_travel_times_cursor(datetime)
     
+    for link in road_map.links:
+        link.num_trips = 0
+    
     i = 0
     # Iterate through the cursor returned by the query
     for (begin_node_id, end_node_id, datetime, travel_time, num_trips) in cur:

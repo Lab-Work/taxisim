@@ -110,7 +110,7 @@ class Map:
         for link in self.links:
             link.time = link.length / speed
 
-    def save_speeds(self, filename):
+    def save_speeds(self, filename, num_trips_threshold=0):
         with open(filename, 'w') as f:
             writer = csv.writer(f)
             writer.writerow(['start_node_id',
@@ -122,7 +122,7 @@ class Map:
                              'speed',
                              'num_trips'])
             for link in self.links:
-                if(link.time > 0):
+                if(link.time > 0 and link.num_trips >= num_trips_threshold):
                     speed = link.length / link.time
                     writer.writerow([link.origin_node.node_id,
                                      link.connecting_node.node_id,
@@ -170,6 +170,8 @@ class Map:
         self.total_region_count = 0
         
         self.isFlat = False
+        self.region_kd_size = region_kd_size
+        self.lookup_kd_size = lookup_kd_size
 
         # Read nodes file and create node objects
         with open(nodes_fn, "r") as f:
@@ -266,10 +268,14 @@ class Map:
         self.idle_link.link_id = i + 1
         self.links.append(self.idle_link)
 
+        self.build_kd_trees()
 
+
+
+    def build_kd_trees(self):
         # Finally, index nodes using KD Trees
-        self.region_kd_tree = KDTree(self.nodes, leaf_size=region_kd_size)
-        self.lookup_kd_tree = KDTree(self.nodes, leaf_size=lookup_kd_size)
+        self.region_kd_tree = KDTree(self.nodes, leaf_size=self.region_kd_size)
+        self.lookup_kd_tree = KDTree(self.nodes, leaf_size=self.lookup_kd_size)
     
     
     # Matches a list of Trips to their nearest intersections (Nodes) in this Map
@@ -281,15 +287,15 @@ class Map:
         # trips - a list of Trip objects to be map-matched
     def match_trips_to_nodes(self, trips):
         trip_lookup = {} # lookup a trip by origin, destination nodes
-        
+
         #First find the nearest origin/destination nodes for each trip
         #We will also find duplicate trips (same origin,destination nodes)
-        for trip in trips:
+        for trip in trips:y
             if(trip.isValid() == Trip.VALID):
                 trip.num_occurrences = 1
                 trip.origin_node = self.get_nearest_node(trip.fromLat, trip.fromLon)
                 trip.dest_node = self.get_nearest_node(trip.toLat, trip.toLon)
-                
+       
                 if((trip.origin_node, trip.dest_node) in trip_lookup):
                     #Already seen this trip at least once
                     trip_lookup[trip.origin_node, trip.dest_node].num_occurrences += 1
@@ -312,6 +318,8 @@ class Map:
             return
         
         self.isFlat = True
+        self.region_kd_tree = None
+        self.lookup_kd_tree = None
         
         for node in self.nodes:
             if(node.forward_links!= None):
@@ -349,6 +357,7 @@ class Map:
                 link.connecting_node = self.nodes_by_id[link.connecting_node_id]
             
     
+        self.build_kd_trees()
     
     def routeTrips(self, trips, num_cpus = 1, max_speed=None):
         if(max_speed==None):
@@ -470,16 +479,23 @@ def getmem():
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000.0
 
 def test_memory_usage():
-    bbox = (-74.3, 40.9, -73.85, 40.65)
+    from db_functions import db_main, db_trip
+    from datetime import datetime
     print("Before: %f" % getmem())
-    nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv", limit_bbox=bbox)
+    nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv", limit_bbox=Map.reasonable_nyc_bbox)
+    print [nyc_map.min_lat, nyc_map.max_lat, nyc_map.min_lon, nyc_map.max_lon]
+    
+    db_main.connect('db_functions/database.conf')
+    d1 = datetime(2012,1,10,9)
+    d2 = datetime(2012,1,10,10)
+    trips = db_trip.find_pickup_dt(d1, d2)
+    print("Matching...")
+    nyc_map.match_trips_to_nodes(trips)
+    
+
     print("After : %f" % getmem())
     del(nyc_map)
-    print("After delete : %f" % getmem())
-    
-    nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv", limit_bbox=bbox)
-    print("Trimmed map : %f " % getmem())
-    
+
     
 
 if(__name__ == "__main__"):
