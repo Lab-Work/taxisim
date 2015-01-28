@@ -273,13 +273,16 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_
     DEBUG = False
     #Collapse identical trips    
     unique_trips = road_map.match_trips_to_nodes(trips)
-    #print "There are " + str(len(unique_trips)) + " unique trips."
+    del(trips)
+    if(len(unique_trips) == 0):
+        raise Exception("No trips to estimate traffic.")
+    
     
     if(test_set!= None):
         unique_test_trips = road_map.match_trips_to_nodes(test_set)
 
     # Set initial travel times to average velocity across trips
-    avg_velocity = compute_avg_velocity(trips)
+    avg_velocity = compute_avg_velocity(unique_trips)
     road_map.set_all_link_speeds(avg_velocity)
     
     # Set the initial idle time

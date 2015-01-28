@@ -41,9 +41,8 @@ def run_chunk(road_map, time):
         t2 = datetime.now()
         print("Saved travel times after " + str(t2 - t1))
         db_main.close()
-    except NotImplementedError as e:
-        print("Failed to estimate traffic for %s" % str(time))
-        print(e.message)
+    except Exception as e:
+        print("Failed to estimate traffic for %s : %s" % (str(time), e.message))
         
 
 
