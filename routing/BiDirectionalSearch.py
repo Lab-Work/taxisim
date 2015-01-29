@@ -15,7 +15,7 @@ HEURISTIC_DISCOUNT = .8
 # use_arcflags - if arcflags are pre-computed on the links, search can be drastically improved
 # max_speed - maximum speed on any link in the graph. used for the A* heuristic
 # Returns:
-# path - a list of Links on the shortest path, in order
+# path - a list of Links on the shortest path, in order, or None if no such path exists
 def bidirectional_search(
         start_node,
         end_node,
@@ -33,6 +33,8 @@ def bidirectional_search(
                                                  use_arcflags,
                                                  max_speed)
 
+    if(center_node==None):
+        return None
     # Step 2 - reconstruct the path, using the pointers left on the node objects
     path = reconstruct_path(center_node)
 

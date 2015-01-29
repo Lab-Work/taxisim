@@ -4,13 +4,14 @@ from Node import Node
 from Link import Link
 from traffic_estimation.Trip import Trip
 from BiDirectionalSearch import bidirectional_search
+from SCC import kosaraju
 from datetime import datetime
 
 # Represents a roadmap, has a set of Nodes and Links
 
 
 class Map:
-    reasonable_nyc_bbox = (-74.3, 40.9, -73.85, 40.65)
+    reasonable_nyc_bbox = (-74.05, 40.9, -73.85, 40.65)
     min_lat = float('inf')
     max_lat = float('-inf')
     min_lon = float('inf')
@@ -268,10 +269,46 @@ class Map:
         self.idle_link.link_id = i + 1
         self.links.append(self.idle_link)
 
+
+        # Clean the graph by removing extra SCCs
+        self.remove_extra_sccs()
+
+        # Build the KD trees
         self.build_kd_trees()
 
 
+    # Cleans the graph by forcing it to be one large strongly connected component
+    # The largest strongly connected component is extracted from the raw graph,
+    # and nodes/links in the remaining SCCs are deleted.
+    def remove_extra_sccs(self):
+        # find strongly connected components
+        sccs = kosaraju(self.nodes)
+        
+        # determine which scc is largest
+        largest_scc = []
+        for scc in sccs:
+            if(len(scc) > len(largest_scc)):
+                largest_scc = scc
+                
+        # find nodes in other small sccs
+        bad_nodes = set()
+        for scc in sccs:
+            if(scc!=largest_scc):
+                bad_nodes.update(scc)
+        
+        # remove these nodes from the graph
+        self.nodes = [node for node in self.nodes if node not in bad_nodes]
 
+        # remove links connected to these nodes
+        for node in bad_nodes:
+            for link in node.forward_links:
+                link.connecting_node.backward_links.remove(link)
+            for link in node.backward_links:
+                link.origin_node.forward_links.remove(link)
+
+
+    # Builds KD trees to spatially index the nodes of the graph.  This makes
+    # geographic queries much faster
     def build_kd_trees(self):
         # Finally, index nodes using KD Trees
         self.region_kd_tree = KDTree(self.nodes, leaf_size=self.region_kd_size)
