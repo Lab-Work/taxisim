@@ -201,7 +201,7 @@ class Map:
                     self.min_lat = min(self.min_lat, latitude)
                     self.max_lat = max(self.max_lat, latitude)
                     self.min_lon = min(self.min_lon, longitude)
-                    self.max_lon = max(self.min_lon, longitude)
+                    self.max_lon = max(self.max_lon, longitude)
     
                     node = Node(
                         int(begin_node_id),

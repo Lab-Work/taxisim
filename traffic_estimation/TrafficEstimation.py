@@ -234,6 +234,9 @@ def compute_link_offsets(road_map, unique_trips, distance_weighting=None):
     # If we underestimate, decrease link offsets
     for trip in unique_trips:
         weight = compute_weight(distance_weighting, trip.dist, trip.estimated_dist)       
+
+        for link in trip.path_links:
+            link.num_trips += weight * len(trip.dup_times)
         
         #print str(use_distance_weighting) + ": " + str(trip.estimated_dist) + " - " + str(trip.dist) + " --> " + str(weight)
         for true_time in trip.dup_times:
@@ -243,8 +246,6 @@ def compute_link_offsets(road_map, unique_trips, distance_weighting=None):
             elif(trip.estimated_time < true_time):
                 for link in trip.path_links:
                     link.offset -= weight
-            
-            link.num_trips += weight
     
 
 

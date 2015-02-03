@@ -13,9 +13,10 @@ from routing.Map import Map
 
 def plot_speed(road_map, dt, filename):
     db_travel_times.load_travel_times(road_map, dt)
+    title = str(dt)    
     
     road_map.save_speeds(filename + ".csv", num_trips_threshold=1)
-    cmd = "Rscript analysis/plot_speeds.R '%s.csv' '%s'" % (filename, filename)
+    cmd = "Rscript analysis/plot_speeds.R '%s.csv' '%s' '%s'" % (filename, filename, title)
     print(cmd)
     system(cmd)
     #remove(filename + ".csv")
@@ -25,11 +26,17 @@ def plot_speed(road_map, dt, filename):
 def plot_many_speeds():
     print("Getting dates")
     db_main.connect("db_functions/database.conf")
-    records = list(db_main.execute("SELECT DISTINCT datetime from travel_times"))
-    dates = [date for (date,) in records]
+    #curs = db_main.execute("select distinct datetime from travel_times where datetime>= '2012-03-04' and datetime < '2012-03-11';")
+    curs = db_main.execute("select distinct datetime from travel_times where datetime>= '2012-03-05 04:00:00' and datetime < '2012-03-05 05:00:00';")
+
+    dates = [date for (date,) in curs]
+    
+    
+    
     dates.sort()    
     print ("There are %d dates" % len(dates))
     
+    print ("Loading map.")
     road_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv")
     for date in dates:
         print("running %s" % str(date))
