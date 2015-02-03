@@ -36,7 +36,7 @@ def run_chunk(road_map, time):
         
     
     
-        estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_weighting=None, model_idle_time=False, initial_idle_time=0)
+        estimate_travel_times(road_map, trips, max_iter=2, test_set=None, distance_weighting=None, model_idle_time=False, initial_idle_time=0)
         t3 = datetime.now()    
         print (str(t3) + " : Finished estimating traffic for " + str(time) + " after " + str(t3-t2))
         
@@ -73,6 +73,6 @@ def run_test():
     print("Loading map")
     road_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv", limit_bbox=Map.reasonable_nyc_bbox)
     road_map.flatten()  
-    d1 = datetime(2012,3,5,hour=4)
+    d1 = datetime(2012,3,5,hour=9)
     run_chunk(road_map, d1)
 

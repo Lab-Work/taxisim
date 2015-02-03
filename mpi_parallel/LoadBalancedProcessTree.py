@@ -120,8 +120,8 @@ class LoadBalancedProcessTree:
     # Params:
         # desired_size - The number of desired nodes in the process tree
         # branching_factor - Max number of children each manager should have
-        # batch_size - the number of jobs to be performed on each node
-    def __init__(self, desired_size, branching_factor=2, debug_mode=False):
+        # debug_mode - set to True for additional print statements from all processes
+    def __init__(self, desired_size, branching_factor=2, job_size_fun=None, debug_mode=False):
         self.desired_size = desired_size
         self.branching_factor = branching_factor
         self.debug_mode = debug_mode
@@ -177,11 +177,17 @@ class LoadBalancedProcessTree:
             # Can be a tuple or list if multiple arguments are required
         # args_list - A list of arguments that may change between each evaluation.
             # Can be a list of lists or tuples if the function requires multiple inputs
-    def map(self, func, const_args, args_list):
+        # job_size_fun - A function to approximate the size (run time) of individual jobs.
+            # The input to this function should be one element of args_list
+            # This allows us to run the larger jobs first, for more efficient CPU usage
+    def map(self, func, const_args, args_list, job_size_fun=None):
         if(MPI.COMM_WORLD.Get_rank()==0):
             # Step 1) Spread func and const_args to all of the workers
             data = pickle.dumps((func, const_args))
             self._spread(data)
+            
+            if(job_size_fun!=None):
+                args_list.sort(key=job_size_fun, reverse=True)
             
             # Step 2) Begin assigning jobs to workers once they are ready
             self._assign_jobs(args_list)
