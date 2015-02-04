@@ -11,7 +11,7 @@ png("../NodesRegionMap.png", 1024, 1024)
 rbPal <- colorRampPalette(c('red', 'orange', 'yellow', 'green', 'blue', 'purple', 'violet', 'black'))
 n$col <- rbPal(128)[as.numeric(cut(n$color_id, breaks = 128))]
 
-plot(n$lat, n$long, col=n$col, pch=15, cex=.3, xlab="Longitude", ylab="Latitude")
+plot(n$long, n$lat, col=n$col, pch=15, cex=.3, xlab="Longitude", ylab="Latitude")
 
 # Close the PNG file
 dev.off()
