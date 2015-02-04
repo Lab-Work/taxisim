@@ -29,11 +29,12 @@ class ArcFlagsPreProcess:
 
     @staticmethod
     def run(map_file):
-        nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv",
+        nyc_map = Map("../nyc_map4/nodes.csv", "../nyc_map4/links.csv",
                       lookup_kd_size=1, region_kd_size=1000)
         nyc_map.assign_node_regions()
+        # nyc_map.save_region("../nyc_map4/region.csv")
 
-        get_correct_nodes(nyc_map, "speeds_per_hour/" + map_file, None)
+        get_correct_nodes(nyc_map, "../speeds_per_hour/" + map_file, None)
 
         i = 0
         forward_arc_flags_dict = dict()
