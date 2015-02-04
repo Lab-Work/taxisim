@@ -1,3 +1,8 @@
+# Instruction to run:
+# 1. go into ArcFlagsPreProcess.py and uncomment
+#         nyc_map.save_region("../nyc_map4/region.csv")
+# 2. run this file
+
 # Read the nodes table from the csv file
 n = read.csv("../nyc_map4/region.csv")
 
