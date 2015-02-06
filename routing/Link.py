@@ -20,5 +20,5 @@ class Link:
         return (forward_hex, backward_hex)
         
     # dummy method - should be fixed later
-    def set_arcflags(forward_arcflags_hex, backward_arcflags_hex):
+    def set_arcflags(self, forward_arcflags_hex, backward_arcflags_hex):
         pass
