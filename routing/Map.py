@@ -6,6 +6,8 @@ from traffic_estimation.Trip import Trip
 from BiDirectionalSearch import bidirectional_search
 from SCC import kosaraju
 from datetime import datetime
+from random import shuffle
+
 
 # Represents a roadmap, has a set of Nodes and Links
 
@@ -86,7 +88,7 @@ class Map:
                 connecting_node = connecting_link.connecting_node
                 if connecting_node is None:
                     pass
-                if connecting_node.region != node.region:
+                if connecting_node.region_id != node.region_id:
                     connecting_node.is_boundary_node = True
 
         print "total regions : " + str(next_region_id)
@@ -99,7 +101,7 @@ class Map:
                 link_speed = float(link.length) / link.time
                 max_speed = max(max_speed, link_speed)
         return max_speed
-    
+
     def get_default_speed(self):
         for link in self.links:
             if(link != self.idle_link and link.num_trips==0):
@@ -133,6 +135,30 @@ class Map:
                                      link.connecting_node.long,
                                      speed,
                                      link.num_trips])
+
+    def save_region(self, filename):
+        with open(filename, 'w') as f:
+            writer = csv.writer(f)
+            color_map = {}
+            colors = range(self.total_region_count)
+            shuffle(colors)
+            for node in self.nodes:
+                if node.region_id in color_map:
+                    node.color_id = color_map[node.region_id]
+                else:
+                    color = colors.pop()
+                    color_map[node.region_id] = color
+                    node.color_id = color
+
+            writer.writerow(['node_id',
+                             'lat',
+                             'long',
+                             'color_id'])
+            for node in self.nodes:
+                writer.writerow([node.node_id,
+                                 node.lat,
+                                 node.long,
+                                 node.color_id])
 
     # Builds the Map from CSV files describing the Nodes and LInks
     # Params:

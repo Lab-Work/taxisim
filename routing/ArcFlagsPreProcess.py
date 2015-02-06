@@ -29,11 +29,13 @@ class ArcFlagsPreProcess:
 
     @staticmethod
     def run(map_file):
-        nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv",
-                      lookup_kd_size=1, region_kd_size=1000)
+        nyc_map = Map("../nyc_map4/nodes.csv", "../nyc_map4/links.csv",
+                      lookup_kd_size=1, region_kd_size=250,
+                      limit_bbox=Map.reasonable_nyc_bbox)
         nyc_map.assign_node_regions()
+        #nyc_map.save_region("../nyc_map4/region.csv")
 
-        get_correct_nodes(nyc_map, "speeds_per_hour/" + map_file, None)
+        #get_correct_nodes(nyc_map, "../speeds_per_hour/" + map_file, None)
 
         i = 0
         forward_arc_flags_dict = dict()
@@ -89,7 +91,7 @@ class ArcFlagsPreProcess:
         stop = timeit.default_timer()  # debug - only process one grid
         print "Running time:", stop - start, "seconds"  # debug
 
-        link_file = csv.writer(open("ArcFlags/map_" + map_file + ".csv", 'wb'))
+        link_file = csv.writer(open("../ArcFlags/map_" + map_file + ".csv", 'wb'))
         # This is a hexadecimal string that converts region to true or false
         headers = ["start_node_id", "end_node_id", "forward_arc_flags",
                    "backward_arc_flags"]
