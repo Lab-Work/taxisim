@@ -10,3 +10,15 @@ class Link:
         
         self.link_id = 0
         self.num_trips = 0
+    
+
+    
+    # dummy method - should be fixed later
+    def get_arcflags_hex(self):
+        forward_hex =  hex(self.origin_node_id)[2:] + hex(self.connecting_node_id)[2:]
+        backward_hex =  hex(self.connecting_node_id)[2:] + hex(self.origin_node_id)[2:]
+        return (forward_hex, backward_hex)
+        
+    # dummy method - should be fixed later
+    def set_arcflags(forward_arcflags_hex, backward_arcflags_hex):
+        pass

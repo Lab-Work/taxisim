@@ -35,8 +35,8 @@ def analyse_trip_locations():
     
     datelist = [datetime(year=2012, month=7, day=8, hour=0) + timedelta(hours=1)*x for x in range(168*3)]
     
-    nyc_map = Map('nyc_map4/nodes.csv', 'nyc_map4/links.csv', limit_bbox=Map.reasonable_nyc_bbox)
-    #nyc_map = Map('nyc_map4/nodes.csv', 'nyc_map4/links.csv')
+    #nyc_map = Map('nyc_map4/nodes.csv', 'nyc_map4/links.csv', limit_bbox=Map.reasonable_nyc_bbox)
+    nyc_map = Map('nyc_map4/nodes.csv', 'nyc_map4/links.csv')
 
     
     print [nyc_map.min_lat, nyc_map.max_lat, nyc_map.min_lon, nyc_map.max_lon]
@@ -64,7 +64,10 @@ def analyse_trip_locations():
                         
         
         print ("Bad trips : %d / %d = %f" % (bad_region_trips, valid_trips, float(bad_region_trips)/valid_trips))
-        print ("JFK trips : %d / %d = %f" % (jfk_trips, bad_region_trips, float(jfk_trips)/bad_region_trips))
+        perc = 0.0
+        if(bad_region_trips>0):
+            perc = float(jfk_trips)/bad_region_trips
+        print ("JFK trips : %d / %d = %f" % (jfk_trips, bad_region_trips, perc))
 
         
         

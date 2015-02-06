@@ -51,7 +51,13 @@ def get_travel_time_table_size():
     cur = db_main.execute(sql)
     [size] = cur
     return size
-    
+
+# Returns a sorted list of datetimes where travel time information is available
+def get_available_dates():
+    sql = "SELECT DISTINCT datetime FROM travel_times ORDER BY datetime;"
+    cur = db_main.execute(sql)
+    dates = [date for (date,) in cur]
+    return dates
 
 
 # Saves traffic conditions (link-by-link travel times) from a Map object into the

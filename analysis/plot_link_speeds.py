@@ -4,7 +4,7 @@ Created on Wed Jan 28 10:49:39 2015
 
 @author: brian
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from os import system, remove
 
 from db_functions import db_main, db_travel_times
@@ -27,10 +27,11 @@ def plot_many_speeds():
     print("Getting dates")
     db_main.connect("db_functions/database.conf")
     #curs = db_main.execute("select distinct datetime from travel_times where datetime>= '2012-03-04' and datetime < '2012-03-11';")
-    curs = db_main.execute("select distinct datetime from travel_times where datetime>= '2012-03-05 04:00:00' and datetime < '2012-03-05 05:00:00';")
+    #curs = db_main.execute("select distinct datetime from travel_times where datetime>= '2012-06-17' and datetime < '2012-06-24';")
 
-    dates = [date for (date,) in curs]
+    #dates = [date for (date,) in curs]
     
+    dates = [datetime(2010,6,1,12) + timedelta(days=7)*x for x in range(208)]
     
     
     dates.sort()    
@@ -40,4 +41,4 @@ def plot_many_speeds():
     road_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv")
     for date in dates:
         print("running %s" % str(date))
-        plot_speed(road_map, date, "analysis/tmp/" + str(date) + ".png")
+        plot_speed(road_map, date, "analysis/tmp2/" + str(date) + ".png")
