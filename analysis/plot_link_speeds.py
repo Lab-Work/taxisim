@@ -19,7 +19,7 @@ def plot_speed(road_map, dt, filename):
     cmd = "Rscript analysis/plot_speeds.R '%s.csv' '%s' '%s'" % (filename, filename, title)
     print(cmd)
     system(cmd)
-    #remove(filename + ".csv")
+    remove(filename + ".csv")
     
 
 
@@ -31,8 +31,8 @@ def plot_many_speeds():
 
     #dates = [date for (date,) in curs]
     
-    dates = [datetime(2010,6,1,12) + timedelta(days=7)*x for x in range(208)]
-    
+    #dates = [datetime(2010,6,1,12) + timedelta(days=7)*x for x in range(208)]
+    dates = [datetime(2010,1,6,10) + timedelta(days=7)*x for x in range(208)]
     
     dates.sort()    
     print ("There are %d dates" % len(dates))
@@ -41,4 +41,4 @@ def plot_many_speeds():
     road_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv")
     for date in dates:
         print("running %s" % str(date))
-        plot_speed(road_map, date, "analysis/tmp2/" + str(date) + ".png")
+        plot_speed(road_map, date, "analysis/wednesdays/" + str(date) + ".png")

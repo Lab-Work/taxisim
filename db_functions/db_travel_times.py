@@ -158,3 +158,40 @@ def load_travel_times(road_map, datetime):
     cur.close()
     
     #print("Loaded " + str(i) + " records.")
+
+
+
+
+def create_link_counts_table():
+    sql = """CREATE TABLE link_counts (
+        begin_node_id BIGINT,
+        end_node_id BIGINT,
+        avg_num_trips FLOAT);"""
+    
+    try:
+        db_main.execute(sql)
+    except:
+        print "Error creating link counts table."
+        pass
+    db_main.commit()
+
+
+def save_link_counts(count_dict):
+    sqls = []
+    for (begin_node_id, end_node_id) in count_dict:
+        count = count_dict[(begin_node_id, end_node_id)]
+        
+        sql = "INSERT INTO link_counts VALUES(%d,%d,%f);" % (
+            begin_node_id,end_node_id,count)
+        sqls.append(sql)
+    
+    db_main.execute("TRUNCATE TABLE link_counts;")
+    db_main.execute("\n".join(sqls))
+    db_main.commit()
+
+# Helper method, which 
+def get_link_counts_cursor():
+    # Execute the query
+    sql = "SELECT * FROM link_counts;"
+    cur = db_main.execute(sql)
+    return cur
