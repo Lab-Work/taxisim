@@ -23,9 +23,10 @@ def create_travel_time_table():
         db_main.execute(sql)
         sql = "CREATE INDEX idx_tt_datetime ON travel_times using BTREE (datetime);"
         db_main.execute(sql)
+        db_main.commit()
     except:
-        pass
-    db_main.commit()
+        db_main.rollback()
+    
 
 # Drops the table that stores travel time data
 def drop_travel_time_table():
@@ -170,10 +171,11 @@ def create_link_counts_table():
     
     try:
         db_main.execute(sql)
+        db_main.commit()
     except:
         print "Error creating link counts table."
-        pass
-    db_main.commit()
+        db_main.rollback()
+    
 
 
 def save_link_counts(count_dict):

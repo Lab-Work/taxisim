@@ -60,3 +60,6 @@ def execute(sql, args=None):
 
 def commit():
     db_con.commit()
+
+def rollback():
+    db_con.rollback()
