@@ -68,13 +68,13 @@ def bidirectional_dijkstra(
     # Initialize the priority queue for the forward search from the origin
     forward_pq = PriorityQueue()
     start_node.forward_time = 0
-    forward_pq.put((0, start_node))
+    forward_pq.put((0, None, start_node))
     forward_expanded = []
 
     # Initialize the priority queue for the backward search from the destination
     backward_pq = PriorityQueue()
     end_node.backward_time = 0
-    backward_pq.put((0, end_node))
+    backward_pq.put((0, None, end_node))
     backward_expanded = []
 
     best_full_time = float('inf')
@@ -84,7 +84,7 @@ def bidirectional_dijkstra(
     while(not forward_pq.empty() and not backward_pq.empty()):
 
         #### FORWARD EXPANSION ####
-        (cost, node) = forward_pq.get()
+        (cost, link, node) = forward_pq.get()
         forward_expanded.append(node)
         node.was_forward_expanded = True
 
@@ -121,10 +121,10 @@ def bidirectional_dijkstra(
                         link.connecting_node) - start_node.approx_dist_to(link.connecting_node)
                     proposed_cost += (distance_difference / 
                                       max_speed) * (HEURISTIC_DISCOUNT / 2)
-                forward_pq.put((proposed_cost, link.connecting_node))
+                forward_pq.put((proposed_cost, link, link.connecting_node))
 
         #### BACKWARD EXPANSION ####
-        (cost, node) = backward_pq.get()
+        (cost, link, node) = backward_pq.get()
         backward_expanded.append(node)
         node.was_backward_expanded = True
 
@@ -158,7 +158,7 @@ def bidirectional_dijkstra(
                         link.origin_node) - end_node.approx_dist_to(link.origin_node)
                     proposed_cost += (distance_difference / 
                                       max_speed) * (HEURISTIC_DISCOUNT / 2)
-                backward_pq.put((proposed_cost, link.origin_node))
+                backward_pq.put((proposed_cost, link, link.origin_node))
 
     if(center_node is None):
         print("Bidirectional search has failed.")

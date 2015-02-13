@@ -5,11 +5,38 @@ Created on Wed Jan 28 10:49:39 2015
 @author: brian
 """
 from datetime import datetime, timedelta
-from os import system, remove
+from os import system, remove, path
 
 from db_functions import db_main, db_travel_times
 from routing.Map import Map
+from 
 
+
+
+
+#Splits a range of numbers into segments - useful for splitting data for parallel processing
+#Size - the number of elements to be split
+#numSegments - the number of segments to split them into
+def splitRange(size, numSegments):
+	for i in range(numSegments):
+		lo = int(size * float(i)/numSegments)
+		hi = int(size * float(i+1)/numSegments)
+		yield (lo,hi)
+
+
+def splitList(lst, numSegments):
+    for (lo, hi) in splitRange(len(lst), numSegments):
+        yield lst[lo:hi]
+
+
+# A simple class which emulates the behavior of a Process Pool, but only uses
+# one CPU.  Useful for 
+class DefaultPool():
+    def __init__(self):
+        self._processes=1
+    def map(self, fun, args):
+        return map(fun, args)
+        
 
 def plot_speed(road_map, dt, filename):
     db_travel_times.load_travel_times(road_map, dt)
@@ -20,7 +47,16 @@ def plot_speed(road_map, dt, filename):
     print(cmd)
     system(cmd)
     remove(filename + ".csv")
-    
+
+def plot_group_of_speeds(road_map, dts, tmp_dir):
+    road_map.unflatten()
+    for dt in dts:
+        out_file = path.join(tmp_dir, str(dts) + ".png")
+        plot_speed(road_map, dt, out_file)
+
+
+def plot_speeds_in_parallel(road_map, dts, tmp_dir="tmp", pool=DefaultPool()):
+    pass
 
 
 def plot_many_speeds():
