@@ -210,7 +210,7 @@ def reconstruct_path(center_node):
 def cleanup(forward_pq, forward_expanded, backward_pq, backward_expanded):
     for node_pq in [forward_pq, backward_pq]:
         if(node_pq is not None):
-            for (priority, node) in node_pq.queue:
+            for (priority, link, node) in node_pq.queue:
                 node.reset()
 
     for node_list in [forward_expanded, backward_expanded]:

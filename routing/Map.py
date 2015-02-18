@@ -113,28 +113,36 @@ class Map:
         for link in self.links:
             link.time = link.length / speed
 
-    def save_speeds(self, filename, num_trips_threshold=0):
-        with open(filename, 'w') as f:
-            writer = csv.writer(f)
-            writer.writerow(['start_node_id',
+
+
+    def get_speed_csv(self, num_trips_threshold=0):
+        yield ['start_node_id',
                              'end_node_id',
                              'start_lat',
                              'start_lon',
                              'end_lat',
                              'end_lon',
                              'speed',
-                             'num_trips'])
-            for link in self.links:
+                             'num_trips']
+        for link in self.links:
                 if(link.time > 0 and link.num_trips >= num_trips_threshold):
                     speed = link.length / link.time
-                    writer.writerow([link.origin_node.node_id,
+                    yield [link.origin_node.node_id,
                                      link.connecting_node.node_id,
                                      link.origin_node.lat,
                                      link.origin_node.long,
                                      link.connecting_node.lat,
                                      link.connecting_node.long,
                                      speed,
-                                     link.num_trips])
+                                     link.num_trips]
+        
+
+    def save_speeds(self, filename, num_trips_threshold=0):
+        with open(filename, 'w') as f:
+            writer = csv.writer(f)
+            for line in self.get_speed_csv(num_trips_threshold):         
+                writer.writerow(line)
+
 
     def save_region(self, filename):
         with open(filename, 'w') as f:

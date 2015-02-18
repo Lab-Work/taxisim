@@ -108,15 +108,12 @@ def run_test():
         #db_main.connect("db_functions/database.conf")
         #db_travel_times.create_travel_time_table()
     
-        d1 = datetime(2012,6,17)
-        d2 = datetime(2012,6,24)
+        d1 = datetime(2010,1,1)
+        d2 = datetime(2014,1,1)
         datelist = list(dateRange(d1,d2, timedelta(hours=1)))
-        
-        datelist2 = [datetime(2010,6,1,12) + timedelta(days=7)*x for x in range(208)]
-
-        datelist += datelist2
-        
+                
         approximate_job_sizes()
+
             
         print("Preparing to run %d dates." % len(datelist))
         
