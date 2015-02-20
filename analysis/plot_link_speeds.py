@@ -82,11 +82,11 @@ def plot_speeds_in_parallel(road_map, dts, tmp_dir="analysis/tmp", pool=DefaultP
 def make_video(tmp_folder, filename_base):
     rmtree(tmp_folder, ignore_errors=True)
     mkdir(tmp_folder)
-    pool = Pool(2)
+    pool = Pool(8)
     #pool = DefaultPool()
     print("Loading map")
     road_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv", limit_bbox=Map.reasonable_nyc_bbox)
-    dates = [datetime(2012,6,17) + timedelta(hours=1)*x for x in range(168)]
+    dates = [datetime(2012,10,21) + timedelta(hours=1)*x for x in range(168*3)]
     print ("We have %d dates" % len(dates))
     plot_speeds_in_parallel(road_map, dates, tmp_dir=tmp_folder, pool=pool)
     
