@@ -115,7 +115,13 @@ class Map:
 
 
 
-    def get_speed_csv(self, num_trips_threshold=0):
+    # An iterator function that returns the speeds of all links in list of lists format
+    # Params:
+        # num_trips_threshold - Only links with at least this many trips will be output
+        # speed_dict - If supplied, speeds will be read from this dictionary instead of the map
+            # the keys are of form (begin_node_id, connecting_node_id)
+            # and the values are the speeds
+    def get_speed_table(self, num_trips_threshold=0, speed_dict=None):
         yield ['start_node_id',
                              'end_node_id',
                              'start_lat',
@@ -124,17 +130,36 @@ class Map:
                              'end_lon',
                              'speed',
                              'num_trips']
-        for link in self.links:
-                if(link.time > 0 and link.num_trips >= num_trips_threshold):
-                    speed = link.length / link.time
-                    yield [link.origin_node.node_id,
-                                     link.connecting_node.node_id,
-                                     link.origin_node.lat,
-                                     link.origin_node.long,
-                                     link.connecting_node.lat,
-                                     link.connecting_node.long,
-                                     speed,
-                                     link.num_trips]
+        
+        if(speed_dict==None):
+            # No speed dictionary supplied - read the speeds directly from the links
+            for link in self.links:
+                    if(link.time > 0 and link.num_trips >= num_trips_threshold):
+                        speed = link.length / link.time
+                        yield [link.origin_node.node_id,
+                                         link.connecting_node.node_id,
+                                         link.origin_node.lat,
+                                         link.origin_node.long,
+                                         link.connecting_node.lat,
+                                         link.connecting_node.long,
+                                         speed,
+                                         link.num_trips]
+        else:
+            # Speed dict is supplied - read the speeds from the dictionary
+            for link in self.links:
+                if(link.origin_node!=None and link.connecting_node!=None):
+                    key = (link.origin_node.node_id, link.connecting_node.node_id)
+                    if(key in speed_dict):
+                        speed = speed_dict[key]
+                        yield [link.origin_node.node_id,
+                                             link.connecting_node.node_id,
+                                             link.origin_node.lat,
+                                             link.origin_node.long,
+                                             link.connecting_node.lat,
+                                             link.connecting_node.long,
+                                             speed,
+                                             link.num_trips]
+                        
         
 
     def save_speeds(self, filename, num_trips_threshold=0):

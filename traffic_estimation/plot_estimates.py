@@ -27,9 +27,12 @@ def splitRange(size, numSegments):
 		yield (lo,hi)
 
 
-def splitList(lst, numSegments):
-    for (lo, hi) in splitRange(len(lst), numSegments):
-        yield lst[lo:hi]
+def splitLists(lst1, lst2, numSegments):
+    for (lo, hi) in splitRange(len(lst1), numSegments):
+        if(lst2==None):
+            yield (lst1[lo:hi], None)
+        else:
+            yield (lst1[lo:hi], lst2[lo:hi])
 
 
 # A simple class which emulates the behavior of a Process Pool, but only uses
@@ -41,8 +44,13 @@ class DefaultPool():
         return map(fun, args)
         
 
-def plot_speed(road_map, dt, filename):
-    db_travel_times.load_travel_times(road_map, dt)
+def plot_speed(road_map, dt, filename, speed_dict=None):
+    
+    #If no speed dict is given, load the speeds from the database
+    if(speed_dict==None):
+        db_travel_times.load_travel_times(road_map, dt)
+
+
     title = str(dt)    
     
     #print ("Saving to %s.csv" % filename)
@@ -52,43 +60,82 @@ def plot_speed(road_map, dt, filename):
     #system(cmd)
     
     print("Processing %s" % title)
-    p1 = Popen(['Rscript', 'analysis/plot_speeds_piped.R', filename, title], stdout=PIPE, stdin=PIPE)
     
-    lines = [",".join(map(str, line)) for line in road_map.get_speed_csv(num_trips_threshold=0)]
-    data = "\n".join(lines)    
+    if(speed_dict==None):
+        plot_type="absolute"
+    else:
+        plot_type="zscore"
     
-    _ = p1.communicate(data)
-
+    
+    p1 = Popen(['Rscript', 'traffic_estimation/plot_speeds_piped.R', filename, title, plot_type], stdout=PIPE, stdin=PIPE)
+    
+    
+    # Get the speed data from the map in tabular form
+    lines = road_map.get_speed_table(num_trips_threshold=0, speed_dict=speed_dict)
+    # Convert table to CSV format and pipe it to the Rscript
+    csv_lines = [",".join(map(str, line)) for line in lines]
+    data = "\n".join(csv_lines)   
+        
+    
+    
+    cmds = ['Rscript', 'traffic_estimation/plot_speeds_piped.R', filename, title, plot_type]
+    #print(" ".join(cmds))
+    #print(data[:2000])
+    #print ("  ==================   ")
+    p1 = Popen(['Rscript', 'traffic_estimation/plot_speeds_piped.R', filename, title, plot_type], stdout=PIPE, stdin=PIPE)
+    _ = p1.communicate(data) # R output is discarded
+    #print(_)
 
     #remove(filename + ".csv")
 
-def plot_group_of_speeds(dts, road_map, tmp_dir):
+def plot_group_of_speeds((dts, speed_dicts), road_map, tmp_dir):
     road_map.unflatten()
     db_main.connect("db_functions/database.conf")
-    for dt in dts:
+    for i in range(len(dts)):
+        dt = dts[i]
+        if(speed_dicts==None):
+            speed_dict = None
+        else:
+            speed_dict = speed_dicts[i]
+        
         out_file = path.join(tmp_dir, str(dt) + ".png")
-        plot_speed(road_map, dt, out_file)
+        plot_speed(road_map, dt, out_file, speed_dict=speed_dict)
     db_main.close()
 
 
-def plot_speeds_in_parallel(road_map, dts, tmp_dir="analysis/tmp", pool=DefaultPool()):
+def plot_speeds_in_parallel(road_map, dts, speed_dicts=None, tmp_dir="analysis/tmp", pool=DefaultPool()):
     road_map.flatten()
     plt_speeds_fun = partial(plot_group_of_speeds, road_map=road_map, tmp_dir = tmp_dir)
     
-    list_it = splitList(dts, pool._processes)
+    list_it = splitLists(dts, speed_dicts, pool._processes)
     pool.map(plt_speeds_fun, list_it)
 
 
-def make_video(tmp_folder, filename_base):
+
+def build_speed_dicts(consistent_link_set, zscore_vectors):
+    speed_dicts = []
+    
+    for vect in zscore_vectors:
+        speed_dict = {}
+        for i in range(len(vect)):
+            speed_dict[consistent_link_set[i]] = vect[i,0]
+        speed_dicts.append(speed_dict)
+    
+    return speed_dicts
+            
+
+
+def make_video(tmp_folder, filename_base, pool=DefaultPool(), dates=None, speed_dicts=None):
     rmtree(tmp_folder, ignore_errors=True)
     mkdir(tmp_folder)
-    pool = Pool(8)
     #pool = DefaultPool()
     print("Loading map")
     road_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv", limit_bbox=Map.reasonable_nyc_bbox)
-    dates = [datetime(2012,10,21) + timedelta(hours=1)*x for x in range(168*3)]
+    
+    if(dates==None):
+        dates = [datetime(2012,10,21) + timedelta(hours=1)*x for x in range(168*3)]
     print ("We have %d dates" % len(dates))
-    plot_speeds_in_parallel(road_map, dates, tmp_dir=tmp_folder, pool=pool)
+    plot_speeds_in_parallel(road_map, dates, speed_dicts=speed_dicts, tmp_dir=tmp_folder, pool=pool)
     
     print ("Combining frames into movie")
     #Combine all of the frames into a .avi movie
