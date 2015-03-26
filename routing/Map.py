@@ -130,43 +130,45 @@ class Map:
         # speed_dict - If supplied, speeds will be read from this dictionary instead of the map
             # the keys are of form (begin_node_id, connecting_node_id)
             # and the values are the speeds
-    def get_speed_table(self, num_trips_threshold=0, speed_dict=None):
+    def get_pace_table(self, num_trips_threshold=0, pace_dict=None):
         yield ['start_node_id',
                              'end_node_id',
                              'start_lat',
                              'start_lon',
                              'end_lat',
                              'end_lon',
-                             'speed',
+                             'pace',
                              'num_trips']
         
-        if(speed_dict==None):
+        if(pace_dict==None):
             # No speed dictionary supplied - read the speeds directly from the links
             for link in self.links:
                     if(link.time > 0 and link.num_trips >= num_trips_threshold):
-                        speed = link.length / link.time
+                        pace = link.time / link.length
+                        # pace is in seconds/meter
                         yield [link.origin_node.node_id,
                                          link.connecting_node.node_id,
                                          link.origin_node.lat,
                                          link.origin_node.long,
                                          link.connecting_node.lat,
                                          link.connecting_node.long,
-                                         speed,
+                                         pace,
                                          link.num_trips]
         else:
             # Speed dict is supplied - read the speeds from the dictionary
             for link in self.links:
                 if(link.origin_node!=None and link.connecting_node!=None):
                     key = (link.origin_node.node_id, link.connecting_node.node_id)
-                    if(key in speed_dict):
-                        speed = speed_dict[key]
+                    if(key in pace_dict):
+                        pace = pace_dict[key]
+                        # pace is in seconds/meter
                         yield [link.origin_node.node_id,
                                              link.connecting_node.node_id,
                                              link.origin_node.lat,
                                              link.origin_node.long,
                                              link.connecting_node.lat,
                                              link.connecting_node.long,
-                                             speed,
+                                             pace,
                                              link.num_trips]
                         
         

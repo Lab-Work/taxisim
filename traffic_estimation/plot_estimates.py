@@ -44,10 +44,10 @@ class DefaultPool():
         return map(fun, args)
         
 
-def plot_speed(road_map, dt, filename, speed_dict=None):
+def plot_speed(road_map, dt, filename, pace_dict=None):
     
     #If no speed dict is given, load the speeds from the database
-    if(speed_dict==None):
+    if(pace_dict==None):
         db_travel_times.load_travel_times(road_map, dt)
 
 
@@ -61,45 +61,39 @@ def plot_speed(road_map, dt, filename, speed_dict=None):
     
     print("Processing %s" % title)
     
-    if(speed_dict==None):
+    if(pace_dict==None):
         plot_type="absolute"
     else:
         plot_type="zscore"
-    
-    
-    p1 = Popen(['Rscript', 'traffic_estimation/plot_speeds_piped.R', filename, title, plot_type], stdout=PIPE, stdin=PIPE)
-    
-    
+        
     # Get the speed data from the map in tabular form
-    lines = road_map.get_speed_table(num_trips_threshold=0, speed_dict=speed_dict)
+    lines = road_map.get_pace_table(num_trips_threshold=1, pace_dict=pace_dict)
     # Convert table to CSV format and pipe it to the Rscript
     csv_lines = [",".join(map(str, line)) for line in lines]
     data = "\n".join(csv_lines)   
-        
     
     
-    cmds = ['Rscript', 'traffic_estimation/plot_speeds_piped.R', filename, title, plot_type]
-    #print(" ".join(cmds))
-    #print(data[:2000])
-    #print ("  ==================   ")
+    #print "\n".join(csv_lines[:1000])
+
     p1 = Popen(['Rscript', 'traffic_estimation/plot_speeds_piped.R', filename, title, plot_type], stdout=PIPE, stdin=PIPE)
     _ = p1.communicate(data) # R output is discarded
+    del(_)
     #print(_)
 
     #remove(filename + ".csv")
 
-def plot_group_of_speeds((dts, speed_dicts), road_map, tmp_dir):
+def plot_group_of_speeds((dts, pace_dicts), road_map, tmp_dir):
     road_map.unflatten()
     db_main.connect("db_functions/database.conf")
     for i in range(len(dts)):
         dt = dts[i]
-        if(speed_dicts==None):
-            speed_dict = None
+        if(pace_dicts==None):
+            pace_dict = None
         else:
-            speed_dict = speed_dicts[i]
+            pace_dict = pace_dicts[i]
         
         out_file = path.join(tmp_dir, str(dt) + ".png")
-        plot_speed(road_map, dt, out_file, speed_dict=speed_dict)
+        plot_speed(road_map, dt, out_file, pace_dict=pace_dict)
     db_main.close()
 
 
@@ -138,6 +132,13 @@ def make_video(tmp_folder, filename_base, pool=DefaultPool(), dates=None, speed_
     plot_speeds_in_parallel(road_map, dates, speed_dicts=speed_dicts, tmp_dir=tmp_folder, pool=pool)
     
     print ("Combining frames into movie")
+    
+    remove("%s.avi"%filename_base)
+    remove("%s.mp4"%filename_base)
+    remove("%s.m4v"%filename_base)
+    
+    
+    
     #Combine all of the frames into a .avi movie
     cmd = 'mencoder "mf://%s/*.png" -mf fps=4 -o %s.avi -ovc lavc -lavcopts vcodec=msmpeg4v2:vbitrate=800' % (tmp_folder, filename_base)
     print(cmd)
