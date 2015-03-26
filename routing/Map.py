@@ -7,6 +7,7 @@ from BiDirectionalSearch import bidirectional_search
 from SCC import kosaraju
 from datetime import datetime
 from random import shuffle
+import numpy as np
 
 
 # Represents a roadmap, has a set of Nodes and Links
@@ -67,6 +68,14 @@ class Map:
 
     # Assigns integer region_id numbers to every node in the graph
     # Regions are based on the rectangular leaf nodes of the region_kd_tree
+
+    def assign_link_arc_flags(self):
+        for link in self.links:
+            link.forward_arc_flags_vector = np.repeat(
+                [False], self.total_region_count)
+            link.backward_arc_flags_vector = np.repeat(
+                [False], self.total_region_count)
+
     def assign_node_regions(self):
         print ("Region tree depth " + str(self.region_kd_tree.get_height()))
         region_id_lookup = {}
@@ -455,14 +464,14 @@ class Map:
     
         self.build_kd_trees()
     
-    def routeTrips(self, trips, num_cpus = 1, max_speed=None):
+    def routeTrips(self, trips, num_cpus = 1, max_speed=None, astar_used=False, arcflags_used=False):
         if(max_speed==None):
             max_speed = self.get_max_speed()
         
         if(num_cpus <= 1):
             #Don't use parallel processing - just route all of the trips
             for trip in trips:
-                trip.path_links = bidirectional_search(trip.origin_node, trip.dest_node, use_astar=True, max_speed=max_speed)
+                trip.path_links = bidirectional_search(trip.origin_node, trip.dest_node, use_astar=astar_used, use_arcflags=arcflags_used, max_speed=max_speed)
         else:
             #Use parallel processing - split the trips into chunks
             pass

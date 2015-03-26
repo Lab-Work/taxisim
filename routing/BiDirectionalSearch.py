@@ -103,6 +103,10 @@ def bidirectional_dijkstra(
         # propagate to neighboring nodes
         for link in node.forward_links:
             # Proposed time of reaching this neighbor via this node
+            if use_arcflags == True:
+                if link.forward_arc_flags_vector[end_node.region_id] == 0:
+                    continue
+
             proposed_cost = node.forward_time + link.time
 
             # If this is better than the current path, then make the update and
@@ -143,6 +147,9 @@ def bidirectional_dijkstra(
         # propagate to neighboring nodes
         for link in node.backward_links:
             # Proposed time of reaching this neighbor via this node
+            if use_arcflags == True:
+                if link.backward_arc_flags_vector[end_node.region_id] == 0:
+                    continue
             proposed_cost = node.backward_time + link.time
 
             # If this is better than the current path, then make the update and
