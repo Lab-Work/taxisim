@@ -26,10 +26,6 @@ print "got trips"
 arc_flags_map.routeTrips(trips, arcflags_used=True)
 print "did first part"
 arc_flags_map.routeTrips(trips1, astar_used=True)
-if trips == trips1:
-	print "works"
-else:
-	print "didnt work"
 
 
 # go through array and apply no arcflags and no A*, arcflags and A*, arcflags and no A*, A* and no ArcFlagsPreProcess
