@@ -195,6 +195,58 @@ class Map:
                                  node.long,
                                  node.color_id])
 
+
+
+    # Saves the graph in METIS file format    
+    def save_as_metis(self, filename):
+        #First, re-index nodes to start with 1
+        n = len(self.nodes)
+        new_node_ids = {}
+        for i in xrange(n):
+            new_node_ids[self.nodes[i].node_id] = i +1       
+        
+        linkset = set()
+        
+        for node in self.nodes:
+            for link in node.forward_links:
+                i = new_node_ids[node.node_id]
+                j = new_node_ids[link.connecting_node.node_id]
+                x = min(i,j)
+                y = max(i,j)
+                linkset.add((x,y))
+            
+        num_nodes = len(self.nodes)
+        num_edges = len(linkset)
+        
+        
+        with open(filename, 'w') as f:
+            f.write("%d %d \n" % (num_nodes,num_edges) )
+            # Write one line for each node
+            for node in self.nodes:
+                # Construct the set of neighbor node ids
+                # Consisting of the forward and backward neighbors
+                neighbors = set()
+                neighbors.update([new_node_ids[link.connecting_node.node_id]
+                                    for link in node.forward_links])
+                neighbors.update([new_node_ids[link.origin_node.node_id]
+                                    for link in node.backward_links])                      
+                
+                i = new_node_ids[node.node_id]
+                for j in neighbors:
+                    if((i,j) not in linkset and (j,i) not in linkset):
+                        print("WTF")
+                    
+                
+                
+                # Sort them, convert to string, and write to file
+                strs = map(str, sorted(neighbors))
+                f.write(" ".join(strs) + "\n")
+                
+                
+            
+            
+        
+
     # Builds the Map from CSV files describing the Nodes and LInks
     # Params:
         # nodes_fn - the name of the CSV file containing Node info
@@ -285,7 +337,7 @@ class Map:
                  _,  # end_angle,
                  street_length,
                  _,  # osm_name,
-                 _,  # osm_class,
+                 osm_class,
                  _,  # osm_way_id,
                  _,  # startX,
                  _,  # startY,
@@ -316,6 +368,9 @@ class Map:
                     # Add Link to forward and backward adjacency lists
                     begin_node.forward_links.append(link)
                     end_node.backward_links.append(link)
+
+                    # Save additional link properties
+                    link.road_class = osm_class
 
                     # Add Link to the list and the lookup table
                     self.links.append(link)

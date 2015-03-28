@@ -89,3 +89,81 @@ def aborted_dijkstra(origin_node, boundary_nodes, this_region_only=False,
     # Now, all origin nodes (and some other nodes) all know their distance from
     # the given origin_node
     return visited_nodes, expanded_count, max_pq_size
+
+
+
+def reset_all_node_costs(road_map):
+    for node in road_map.nodes:
+        node.cost = float('inf')
+
+
+# A Dijkstra search that aborts when all of the boundary_nodes have been
+# expanded
+# params:
+#    origin_node - the node that the search originates
+#    origin_nodeId - see DijkstrasAlgorithm.init_dict()
+#    boundary_nodes - nodes at the boundary of the region.  The search stops
+#                    when they are all expanded
+#    this_region_only - if True, ignore nodes from other regions (WARNING:
+#                       shortest path between two boundary nodes may go outside
+#                       of region.)
+#    on_forward_graph - if True, use the backward_links to expand
+# returns:
+#    nodes_to_search - the "frontier" of nodes which have been touche
+def find_nearest_neighbors(origin_node, num_neighbors, on_forward_graph=True):
+    # maintain set of boundary  nodes that have been visited by this search
+
+    
+    visited_nodes_cost = {}
+    origin_node.cost = 0
+    
+
+    # Initialize Dijkstra queue with the origin node
+    nodes_to_search = PriorityQueue()
+    nodes_to_search.put((0, origin_node))
+
+    expanded_count = 0
+    max_pq_size = 0
+
+    while(not nodes_to_search.empty()):
+        # Get the nearest node from the priority queue
+        max_pq_size = max(nodes_to_search.qsize(), max_pq_size)
+        (cost, node) = nodes_to_search.get()
+        expanded_count += 1
+
+        visited_nodes_cost[node] = cost
+            
+        if(len(visited_nodes_cost) >= num_neighbors):
+            break
+        
+        connecting_links = None
+        if on_forward_graph:
+            connecting_links = node.backward_links
+        else:
+            connecting_links = node.forward_links
+        # Propagate to neighbors on the forward graph using the backward links
+        for connecting_link in connecting_links:
+            neighbor = None
+            if on_forward_graph:
+                neighbor = connecting_link.origin_node
+            else:
+                neighbor = connecting_link.connecting_node
+
+            
+            proposed_cost = node.cost + connecting_link.time
+            if(proposed_cost < neighbor.cost):
+                neighbor.cost = proposed_cost
+                nodes_to_search.put((proposed_cost, neighbor))
+
+
+    #cleanup
+    for node in visited_nodes_cost:
+        node.cost = float('inf')
+    
+    for (cost,node) in nodes_to_search.queue:
+        node.cost = float('inf')
+
+
+    # Now, all origin nodes (and some other nodes) all know their distance from
+    # the given origin_node
+    return visited_nodes_cost

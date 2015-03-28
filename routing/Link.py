@@ -10,6 +10,7 @@ class Link:
         
         self.link_id = 0
         self.num_trips = 0
+        self.road_class = ""
     
 
     
