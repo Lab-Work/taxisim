@@ -26,5 +26,6 @@ from datetime import datetime, timedelta
 
 
 
-from routing.partition_graph import run_many_tests, simple_test
+from routing.partition_graph import run_many_tests, simple_test, delete_new_jersey
 run_many_tests()
+#delete_new_jersey()

@@ -196,6 +196,83 @@ class Map:
                                  node.color_id])
 
 
+    # Saves the map in CSV format, using two CSV files
+    # Params:
+        # node_filename - The CSV file to save the node data in
+        # link_filename - The CSV file to save the link data in
+    def save_as_csv(self, node_filename, link_filename):
+        # First write node file
+        with open(node_filename, 'w') as f:
+            w = csv.writer(f)
+            # Write header
+            w.writerow(['node_id',
+                'is_complete',
+                'num_in_links',
+                'num_out_links',
+                'osm_traffic_controller',
+                'longitude',
+                'latitude',
+                'osm_changeset',
+                'birth_timestamp',
+                'death_timestamp',
+                'region_id'])
+            # Write a row for each node
+            for node in self.nodes:
+                line = [node.node_id,
+                     node.is_complete,
+                     len(node.backward_links),  # num_in_links,
+                     len(node.forward_links),  # num_out_links,
+                     node.osm_traffic_controller,  # osm_traffic_controller,
+                     node.long,
+                     node.lat,
+                     node.osm_changeset,  # osm_changeset,
+                     node.birth_timestamp,  # birth_timestamp,
+                     node.death_timestamp,  # death_timestamp,
+                     node.region_id]
+                w.writerow(line)
+        
+        # Next write link file
+        with open(link_filename, 'w') as f:
+            w = csv.writer(f)
+            # First write header
+            w.writerow(['link_id',
+                'begin_node_id',
+                'end_node_id',
+                'begin_angle',
+                'end_angle',
+                'street_length',
+                'osm_name',
+                'osm_class',
+                'osm_way_id',
+                'startX',
+                'startY',
+                'endX',
+                'endY',
+                'osm_changeset',
+                'birth_timestamp',
+                'death_timestamp'])
+            
+            # Now write one row for each Link
+            for link in self.links:
+                if(link.origin_node!=None and link.connecting_node!=None):
+                    line = [link.link_id,  # link_id,
+                         link.origin_node.node_id,
+                         link.connecting_node.node_id,
+                         link.begin_angle,  # begin_angle,
+                         link.end_angle,  # end_angle,
+                         link.length,
+                         link.osm_name,  # osm_name,
+                         link.osm_class,
+                         link.osm_way_id,  # osm_way_id,
+                         link.origin_node.long,  # startX,
+                         link.origin_node.lat,  # startY,
+                         link.connecting_node.long,  # endX,
+                         link.connecting_node.lat,  # endY,
+                         link.osm_changeset,  # osm_changeset,
+                         link.birth_timestamp,  # birth_timestamp,
+                         link.death_timestamp]
+                    w.writerow(line)
+                 
 
     # Saves the graph in METIS file format    
     def save_as_metis(self, filename):
@@ -294,20 +371,21 @@ class Map:
             for line in csv_reader:
                 # Unpack CSV line
                 [begin_node_id,
-                 _,  # is_complete,
+                 is_complete,  # is_complete,
                  _,  # num_in_links,
                  _,  # num_out_links,
-                 _,  # osm_traffic_controller,
+                 osm_traffic_controller,  # osm_traffic_controller,
                  longitude,
                  latitude,
-                 _,  # osm_changeset,
-                 _,  # birth_timestamp,
-                 _,  # death_timestamp,
+                 osm_changeset,  # osm_changeset,
+                 birth_timestamp,  # birth_timestamp,
+                 death_timestamp,  # death_timestamp,
                  region_id] = line
 
-                # grow the bounds of the map if necessary
+                
                 [latitude, longitude] = map(float, [latitude, longitude])
                 
+                # Add the node if it is within the bounds of the map
                 if(limit_bbox==None or (latitude > bottom_lat and latitude < top_lat and
                     longitude > left_lon and longitude < right_lon)):                
                     
@@ -315,12 +393,22 @@ class Map:
                     self.max_lat = max(self.max_lat, latitude)
                     self.min_lon = min(self.min_lon, longitude)
                     self.max_lon = max(self.max_lon, longitude)
-    
+                    
+                    # build node object
                     node = Node(
                         int(begin_node_id),
                         latitude,
                         longitude,
                         int(region_id))
+                        
+                    # set additional node properties
+                    node.is_complete = bool(is_complete)
+                    node.osm_traffic_controller = osm_traffic_controller
+                    node.osm_changeset = int(osm_changeset)
+                    node.birth_timestamp = int(birth_timestamp)
+                    node.death_timestamp = int(death_timestamp)
+                    node.region_id = int(region_id)
+                    
                     self.nodes.append(node)
                     self.nodes_by_id[node.node_id] = node
 
@@ -333,21 +421,21 @@ class Map:
                 [_,  # link_id,
                  begin_node_id,
                  end_node_id,
-                 _,  # begin_angle,
-                 _,  # end_angle,
+                 begin_angle,  # begin_angle,
+                 end_angle,  # end_angle,
                  street_length,
-                 _,  # osm_name,
+                 osm_name,  # osm_name,
                  osm_class,
-                 _,  # osm_way_id,
+                 osm_way_id,  # osm_way_id,
                  _,  # startX,
                  _,  # startY,
                  _,  # endX,
                  _,  # endY,
-                 _,  # osm_changeset,
-                 _,  # birth_timestamp,
-                 _,  # death_timestamp
-                 ] = line
+                 osm_changeset,  # osm_changeset,
+                 birth_timestamp,  # birth_timestamp,
+                 death_timestamp] = line
                 # convert strings to int ids
+                 
                 [begin_node_id, end_node_id] = map(
                     int, [begin_node_id, end_node_id])
 
@@ -368,9 +456,18 @@ class Map:
                     # Add Link to forward and backward adjacency lists
                     begin_node.forward_links.append(link)
                     end_node.backward_links.append(link)
-
+                    
                     # Save additional link properties
-                    link.road_class = osm_class
+                    link.osm_class = osm_class
+                    link.begin_angle = float(begin_angle)
+                    link.end_angle = float(end_angle)
+                    link.osm_name = osm_name
+                    link.osm_class = osm_class
+                    link.osm_way_id = int(osm_way_id)
+                    link.osm_changeset = int(osm_changeset)
+                    link.birth_timestamp = int(birth_timestamp)
+                    link.death_timestamp = int(death_timestamp)
+
 
                     # Add Link to the list and the lookup table
                     self.links.append(link)
@@ -391,6 +488,39 @@ class Map:
 
         # Build the KD trees
         self.build_kd_trees()
+
+
+    def delete_nodes(self, bad_nodes):
+        # Convert to set for O(1) lookup
+        bad_nodes = set(bad_nodes)
+        
+        # remove these nodes from the graph and the lookup table
+        self.nodes = [node for node in self.nodes if node not in bad_nodes]
+        for node in bad_nodes:
+            _ = self.nodes_by_id.pop(node.node_id)   
+        del _
+        
+        bad_links = set()        
+        # remove links connected to these nodes
+        for node in bad_nodes:
+            for link in node.forward_links:
+                link.connecting_node.backward_links.remove(link)
+                bad_links.add(link)
+            for link in node.backward_links:
+                link.origin_node.forward_links.remove(link)
+                bad_links.add(link)
+        
+        # also remove these links from the list and lookup table
+        self.links = [link for link in self.links if link not in bad_links]
+        for link in bad_links:
+            _ = self.links_by_node_id.pop((link.origin_node.node_id, link.connecting_node.node_id))
+        del _
+        
+        # Re-index the link ids, since we have shifted the list around
+        for i in xrange(len(self.links)):
+            self.links[i].link_id = i
+        
+        
 
 
     # Cleans the graph by forcing it to be one large strongly connected component

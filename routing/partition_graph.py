@@ -8,6 +8,7 @@ from os import system
 from routing.Map import Map
 
 import csv
+from collections import defaultdict
 
 
 # Runs the KaHIP program kaffpaE in order to cluster the nodes of the graph, according
@@ -86,36 +87,98 @@ def plot_map(cluster_filename, output_filename):
 # Runs the clustering and plots the results
 def simple_test():
     print("Loading")
-    road_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv", limit_bbox=Map.reasonable_nyc_bbox)
+    road_map = Map("nyc_map4/nodes_no_nj.csv", "nyc_map4/links_no_nj.csv", limit_bbox=Map.reasonable_nyc_bbox)
     print("Saving")
-    road_map.save_as_metis('nyc_map4/nyc.metis')
+    road_map.save_as_metis('nyc_map4/nyc_no_nj.metis')
 
     print("Clustering")
-    run_KaFFPaE(road_map, graph_filename="nyc_map4/nyc.metis", time=60)
+    run_KaFFPaE(road_map, graph_filename="nyc_map4/nyc_no_nj.metis", time=10, imbalance=5,
+                num_clusters=4)
     
-    output_clusters(road_map, 2, 10, 'tmp_cluster.csv')
+    output_clusters(road_map, 4, 5, 'tmp_cluster.csv')
     
     plot_map('tmp_cluster.csv', 'graph_clusters.pdf')
+    
+    return road_map
 
 
-# Runs the clustering for multiple values of K and imbalance, and plots all of the results
-# in one big PDF
-def run_many_tests():
+#  Identifies the Western-most cluster.  This is NJ
+def find_new_jersey_region(road_map):
+    # We will do this by computing the average longitude in each cluster
+    s_lon = defaultdict(int)
+    n_lon = defaultdict(int)
+    for node in road_map.nodes:
+        s_lon[node.cluster_id] += node.long
+        n_lon[node.cluster_id] += 1
+    
+    best_region = -1
+    best_lon = float('inf')
+    for region_id in s_lon:
+        avg_lon = s_lon[region_id] / n_lon[region_id]
+        if(avg_lon < best_lon):
+            best_lon = avg_lon
+            best_region = region_id
+    
+    return best_region
+
+
+
+def delete_new_jersey():
     print("Loading")
     road_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv", limit_bbox=Map.reasonable_nyc_bbox)
     print("Saving")
     road_map.save_as_metis('nyc_map4/nyc.metis')
 
     print("Clustering")
+    run_KaFFPaE(road_map, graph_filename="nyc_map4/nyc.metis", time=60, imbalance=25,
+                num_clusters=4)
+    
+    # save 'before' map
+    print("Outputting")
+    output_clusters(road_map, 4, 5, 'tmp_cluster.csv')
+    plot_map('tmp_cluster.csv', 'with_new_jersey.pdf')
+    
+    print("Deleting NJ")
+    # Identify nodes that are in NJ and delete them
+    nj_region = find_new_jersey_region(road_map)
+    print ("--Deleting region %d" % nj_region)
+    nj_nodes = [node for node in road_map.nodes if node.cluster_id==nj_region]
+    road_map.delete_nodes(nj_nodes)
+    
+    # Save 'after' map
+    print("Outputting")
+    output_clusters(road_map, 4, 5, 'tmp_cluster.csv')
+    plot_map('tmp_cluster.csv', 'without_new_jersey.pdf')
+    
+    print("Saving")
+    road_map.save_as_csv('nyc_map4/nodes_no_nj.csv', 'nyc_map4/links_no_nj.csv')
+    
+    
+    
+    
+    
+    
+
+
+
+# Runs the clustering for multiple values of K and imbalance, and plots all of the results
+# in one big PDF
+def run_many_tests():
+    print("Loading")
+    road_map = Map("nyc_map4/nodes_no_nj.csv", "nyc_map4/links_no_nj.csv", limit_bbox=Map.reasonable_nyc_bbox)
+    print("Saving")
+    road_map.save_as_metis('nyc_map4/nyc_no_nj.metis')
+
+    print("Clustering")
 
     append = False
-    for imb in [1,5,10,15,20,25,30,40,50,100]:        
-        for k in [1,2,3,4,5,6,7,8,9,10,15,20,30,40,50,100]:
+    for imb in [10,15,20,25]:        
+        for k in [2,3,4,5,6,7,8,9,10,15,20,30,40,50,100]:
             
             print ("imb=%d, k=%d" % (imb,k))
             # Cluster the graph into K clusters with imb% imbalance allowed
-            run_KaFFPaE(road_map, graph_filename="nyc_map4/nyc.metis", 
-                        num_clusters=k, imbalance=imb, time=120, num_cpus=8)
+            run_KaFFPaE(road_map, graph_filename="nyc_map4/nyc_no_nj.metis", 
+                        num_clusters=k, imbalance=imb, time=60, num_cpus=8)
             
             # Output the clusters to the file.
             output_clusters(road_map, k, imb, 'tmp_cluster.csv', append=append)
