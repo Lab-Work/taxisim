@@ -52,45 +52,35 @@ class Link:
     def decode_forward_arcflags_hex(self, hex_string):
         if self.forward_arc_flags_vector == None:
             self.forward_arc_flags_vector = np.empty(4*len(hex_string), dtype=bool)
-        count = 0
-        for i in range(len(hex_string)):
-            curr_hex = int(hex_string[i],16)
+        for count in xrange(0, len(hex_string), 4):
+            curr_hex = int(hex_string[count/4],16)
             self.forward_arc_flags_vector[count] = (bool(curr_hex/8))
             if curr_hex - 8 >= 0:
                 curr_hex = curr_hex-8
-            count+=1
             self.forward_arc_flags_vector[count] = (bool(curr_hex/4))
-            if curr_hex - 4 > 0:
+            if curr_hex - 4 >= 0:
                 curr_hex = curr_hex-4
-            count+=1
             self.forward_arc_flags_vector[count] = (bool(curr_hex/2))
-            if curr_hex - 2 > 0:
+            if curr_hex - 2 >= 0:
                 curr_hex = curr_hex-2
-            count+=1
             self.forward_arc_flags_vector[count] = (bool(curr_hex))
-            count+=1
 
 
     def decode_backward_arcflags_hex(self, hex_string):
         if self.backward_arc_flags_vector == None:
             self.backward_arc_flags_vector = np.empty(4*len(hex_string), dtype=bool)
-        count = 0
-        for i in range(len(hex_string)):
-            curr_hex = int(hex_string[i],16)
+        for count in xrange(0, len(hex_string), 4):
+            curr_hex = int(hex_string[count/4],16)
             self.backward_arc_flags_vector[count] = (bool(curr_hex/8))
             if curr_hex - 8 >= 0:
                 curr_hex = curr_hex-8
-            count+=1
             self.backward_arc_flags_vector[count] = (bool(curr_hex/4))
-            if curr_hex - 4 > 0:
+            if curr_hex - 4 >= 0:
                 curr_hex = curr_hex-4
-            count+=1
             self.backward_arc_flags_vector[count] = (bool(curr_hex/2))
-            if curr_hex - 2 > 0:
+            if curr_hex - 2 >= 0:
                 curr_hex = curr_hex-2
-            count+=1
             self.backward_arc_flags_vector[count] = (bool(curr_hex))
-            count+=1
 
 
 

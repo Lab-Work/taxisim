@@ -228,7 +228,7 @@ class DijkstrasAlgorithm:
                         # the actual node itself
                         connected_node))
 
-        DijkstrasAlgorithm.set_arc_flags(nyc_map, boundary_nodes[0].region_id) 
+        
 
         print("Max Queue Size: " + str(max_queue_size))  # debug
         print("Number of expansions: " + str(expansion_count))  # debug
@@ -255,6 +255,8 @@ class DijkstrasAlgorithm:
         DijkstrasAlgorithm.directed_dijkstra(boundary_nodes, nyc_map,
                                              warm_start, use_domination_value,
                                              on_forward_graph=False)
+
+        DijkstrasAlgorithm.set_arc_flags(nyc_map, boundary_nodes[0].region_id)
         print
 
     # Runs a Dijkstra search independently for each boundary node.
@@ -309,7 +311,7 @@ class DijkstrasAlgorithm:
                 if predecessor_node is not None:
                     # node.is_backward_arc_flags[connection] = True
                     assignLink = nyc_map.links_by_node_id[(predecessor_node.node_id, node.node_id)]
-                    assignLink.forward_arc_flags_vector[curr_region_id] = True
+                    assignLink.backward_arc_flags_vector[curr_region_id] = True
 
 
 
