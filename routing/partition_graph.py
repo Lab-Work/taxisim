@@ -14,7 +14,7 @@ from collections import defaultdict
 # Runs the KaHIP program kaffpaE in order to cluster the nodes of the graph, according
 # to a balanced min cut criteria.  Assumes that the KaHIP programs have already
 # been properly built and are located in a folder called KaHIP.  The results of
-# the clustering will be saved into the node.cluster_id field for each node of
+# the clustering will be saved into the node.region_id field for each node of
 # the graph.
 # Params:
     # road_map - a Map object to be clustered
@@ -45,7 +45,7 @@ def run_KaFFPaE(road_map, graph_filename=None, num_clusters=2, imbalance=10,
     with open("tmp_clusters", "r") as f:
         i = 0
         for line in f:
-            road_map.nodes[i].cluster_id = int(line)
+            road_map.nodes[i].region_id = int(line)
             i += 1
     
 
@@ -68,7 +68,7 @@ def output_clusters(road_map, num_clusters, imbalance, filename, append=False):
             w.writerow(['k', 'imbalance', 'lat', 'lon', 'region'])
         
         for node in road_map.nodes:
-            w.writerow([num_clusters, imbalance, node.lat, node.long, node.cluster_id])
+            w.writerow([num_clusters, imbalance, node.lat, node.long, node.region_id])
             
 
 
@@ -108,8 +108,8 @@ def find_new_jersey_region(road_map):
     s_lon = defaultdict(int)
     n_lon = defaultdict(int)
     for node in road_map.nodes:
-        s_lon[node.cluster_id] += node.long
-        n_lon[node.cluster_id] += 1
+        s_lon[node.region_id] += node.long
+        n_lon[node.region_id] += 1
     
     best_region = -1
     best_lon = float('inf')
@@ -142,7 +142,7 @@ def delete_new_jersey():
     # Identify nodes that are in NJ and delete them
     nj_region = find_new_jersey_region(road_map)
     print ("--Deleting region %d" % nj_region)
-    nj_nodes = [node for node in road_map.nodes if node.cluster_id==nj_region]
+    nj_nodes = [node for node in road_map.nodes if node.region_id==nj_region]
     road_map.delete_nodes(nj_nodes)
     
     # Save 'after' map
@@ -153,12 +153,6 @@ def delete_new_jersey():
     print("Saving")
     road_map.save_as_csv('nyc_map4/nodes_no_nj.csv', 'nyc_map4/links_no_nj.csv')
     
-    
-    
-    
-    
-    
-
 
 
 # Runs the clustering for multiple values of K and imbalance, and plots all of the results
@@ -172,21 +166,31 @@ def run_many_tests():
     print("Clustering")
 
     append = False
-    for imb in [10,15,20,25]:        
-        for k in [2,3,4,5,6,7,8,9,10,15,20,30,40,50,100]:
+    #imb_vals = [10,15,20,25]
+    #k_vals = [2,3,4,5,6,7,8,9,10,15,20,30,40,50,100]
+    
+    imb_vals = [20]
+    k_vals = [4,10]
+    for imb in imb_vals:        
+        for k in k_vals:
             
             print ("imb=%d, k=%d" % (imb,k))
             # Cluster the graph into K clusters with imb% imbalance allowed
             run_KaFFPaE(road_map, graph_filename="nyc_map4/nyc_no_nj.metis", 
-                        num_clusters=k, imbalance=imb, time=60, num_cpus=8)
+                        num_clusters=k, imbalance=imb, time=120, num_cpus=2)
             
             # Output the clusters to the file.
             output_clusters(road_map, k, imb, 'tmp_cluster.csv', append=append)
             # Future clusterings will be appended to the file instead of overwriting
             append=True 
     
+    
+            print("Saving")
+            nodes_fn = 'nyc_map4/nodes_no_nj_imb%d_k%d.csv' % (imb, k)
+            links_fn = 'nyc_map4/links_no_nj_imb%d_k%d.csv' % (imb, k)
+            road_map.save_as_csv(nodes_fn, links_fn)
+            
     # Once the file is produced, plot it
     plot_map('tmp_cluster.csv', 'graph_clusters.pdf')
-    
     
     
