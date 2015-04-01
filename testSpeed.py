@@ -4,10 +4,13 @@ from datetime import datetime, date, time
 from routing import Map
 # from Map import Map
 region_size = 4000
-# ArcFlagsPreProcess.run(region_size)
+ArcFlagsPreProcess.run(region_size)
 arc_flags_map = Map.Map("nyc_map4/nodes.csv", "nyc_map4/links.csv",
                       lookup_kd_size=1, region_kd_size=region_size,
                       limit_bbox=Map.Map.reasonable_nyc_bbox)
+arc_flags_map.assign_node_regions()
+arc_flags_map.assign_link_arc_flags()
+
 print "loaded map"
 db_main.connect("db_functions/database.conf")
 d = datetime(2012,3,5,2)
@@ -27,5 +30,9 @@ arc_flags_map.routeTrips(trips, arcflags_used=True)
 print "did first part"
 arc_flags_map.routeTrips(trips1, astar_used=True)
 
+
+for i in in trips:
+	if trips.path_links == trips1.path_links:
+		print "worked"
 
 # go through array and apply no arcflags and no A*, arcflags and A*, arcflags and no A*, A* and no ArcFlagsPreProcess
