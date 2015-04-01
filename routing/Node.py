@@ -41,10 +41,6 @@ class Node:
         self.forward_links = []
         self.backward_links = []
 
-
-        self.is_forward_arc_flags = {}
-        self.is_backward_arc_flags = {}
-
         ######################################################
         #  Used in multiple dijkstra arcflag precomputation  #
         ######################################################
@@ -121,11 +117,6 @@ class Node:
         self.forward_links.append(Link(node_id, end_node_id, weight, speed,
                                        time))
 
-    def set_arc_flags(self, node_id, hex_string):
-        # DEPRECATED!
-        new_list = hex_deconverter(hex_string)
-        self.is_forward_arc_flags[node_id] = new_list
-        self.is_backward_arc_flags[node_id] = new_list
 
     def get_boundary_time_inf_count(self, on_forward_graph):
         if on_forward_graph:

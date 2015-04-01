@@ -228,7 +228,7 @@ class DijkstrasAlgorithm:
                         # the actual node itself
                         connected_node))
 
-        DijkstrasAlgorithm.set_arc_flags(nyc_map)
+        DijkstrasAlgorithm.set_arc_flags(nyc_map, boundary_nodes[0].region_id) 
 
         print("Max Queue Size: " + str(max_queue_size))  # debug
         print("Number of expansions: " + str(expansion_count))  # debug
@@ -296,13 +296,29 @@ class DijkstrasAlgorithm:
     # Given where the nodes came from, rebuilds the path that was taken to the
     # final node
     @staticmethod
-    def set_arc_flags(nyc_map):
+    def set_arc_flags(nyc_map, curr_region_id):
         for node in nyc_map.nodes:
             # Set forward arc flags
-            for connection in node.forward_predecessors:
-                if connection is not None:
-                    node.is_forward_arc_flags[connection] = True
+            for predecessor_node in node.forward_predecessors:
+                if predecessor_node is not None:
+                    #node.is_forward_arc_flags[connection] = True
+                    assignLink = nyc_map.links_by_node_id[(node.node_id, predecessor_node.node_id)]
+                    assignLink.forward_arc_flags_vector[curr_region_id] = True
             # Set backward arc flags
-            for connection in node.backward_predecessors:
-                if connection is not None:
-                    node.is_backward_arc_flags[connection] = True
+            for predecessor_node in node.backward_predecessors:
+                if predecessor_node is not None:
+                    # node.is_backward_arc_flags[connection] = True
+                    assignLink = nyc_map.links_by_node_id[(predecessor_node.node_id, node.node_id)]
+                    assignLink.forward_arc_flags_vector[curr_region_id] = True
+
+
+
+
+########################################################################################
+#   ArcFlags | graph      | Predecessor Directions
+#
+#   Forward  | Backward   | With Forward Graph
+#   Backward | Forward    | against Forward Graph
+#
+########################################################################################
+
