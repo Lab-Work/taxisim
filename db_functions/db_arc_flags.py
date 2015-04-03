@@ -144,8 +144,8 @@ def load_arc_flags(road_map, datetime):
         # Find the appropriate Link in the road_map and set the relevant attributes
         if((begin_node_id, end_node_id) in road_map.links_by_node_id):
             link = road_map.links_by_node_id[begin_node_id, end_node_id]
-            link.decode_forward_arcflags_hex(forward_arcs) #___________________HERE______________________
-            link.decode_backward_arcflags_hex(backward_arcs) #___________________HERE______________________
+            link.decode_forward_arcflags_hex(forward_arcs, road_map.total_region_count) #___________________HERE______________________
+            link.decode_backward_arcflags_hex(backward_arcs, road_map.total_region_count) #___________________HERE______________________
             # link.speed = link.length / travel_time
     cur.close()
     

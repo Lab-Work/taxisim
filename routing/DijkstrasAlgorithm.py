@@ -309,7 +309,7 @@ class DijkstrasAlgorithm:
                 if predecessor_node is not None:
                     # node.is_backward_arc_flags[connection] = True
                     assignLink = nyc_map.links_by_node_id[(predecessor_node.node_id, node.node_id)]
-                    assignLink.forward_arc_flags_vector[curr_region_id] = True
+                    assignLink.backward_arc_flags_vector[curr_region_id] = True
 
 
 
