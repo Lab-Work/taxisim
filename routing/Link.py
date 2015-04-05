@@ -24,20 +24,13 @@ class Link:
 
     def arcflags_to_hex(self, direction):
         hexString = []
-        for i in range(0,len(direction), 4):
-            hex_val = int(direction[i])*8 + int(direction[i+1])*4 + int(direction[i+2])*2 + int(direction[i+3])
-            hexString.append(hex(hex_val)[2:3])
-        i+=4
-        if i < len(direction):
-            i+=1
-            hex_val += (int)(direction[i])*8
-            i+=1
-            if i < len(direction):
-                hex_val += (int)(direction[i])*4
-            i+=1
-            if i < len(direction):
-                hex_val += (int)(direction[i])*2
-            hexString.append(hex(hex_val)[2:3])
+        curr_val = [8,4,2,1]
+        hex_val = 0
+        for i in range(len(direction)):
+            hex_val += int(direction[i])*curr_val[i%4]
+            if i%4 == 3 or i==len(direction)-1:
+                hexString.append(hex(hex_val)[2:3])
+                hex_val = 0
         return ''.join(hexString)    
 
     def decode_forward_arcflags_hex(self, hex_string, region_count):

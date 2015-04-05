@@ -4,7 +4,7 @@ from datetime import datetime, date, time
 from routing import Map
 
 region_size = 4000
-# ArcFlagsPreProcess.run(region_size)
+ArcFlagsPreProcess.run(region_size)
 arc_flags_map = Map.Map("nyc_map4/nodes.csv", "nyc_map4/links.csv",
                       lookup_kd_size=1, region_kd_size=region_size,
                       limit_bbox=Map.Map.reasonable_nyc_bbox)
