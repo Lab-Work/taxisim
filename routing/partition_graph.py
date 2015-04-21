@@ -6,6 +6,11 @@ Created on Fri Mar 27 22:25:43 2015
 """
 from os import system
 from routing.Map import Map
+from scipy.sparse import dok_matrix, csr_matrix
+from scipy.sparse.linalg import lobpcg
+from sklearn.cluster import k_means
+
+import numpy as np
 
 import csv
 from collections import defaultdict
@@ -155,6 +160,115 @@ def delete_new_jersey():
     
 
 
+
+
+
+
+
+def build_adjacency_matrix(road_map):
+    # First, re-index nodes from 0 to N-1
+    n = len(road_map.nodes)
+    new_node_ids = {}
+    for i in range(n):
+        new_node_ids[road_map.nodes[i].node_id] = i
+    
+    
+    
+    
+    # Next, produce affinity matrix (which is a sparse matrix)
+    a = dok_matrix((n,n)) #Sparse matrix format
+    for i in range(n):
+        if(i%1000 ==0):
+            print(i)
+        
+        node = road_map.nodes[i]
+        for link in node.forward_links:
+            neighbor = link.connecting_node
+            j = new_node_ids[neighbor.node_id]
+          
+            if(link.road_class in ("motorway", "motorway_link")):
+                a[i,j] = .01
+                a[j,i] = .01
+            else:
+                a[i,j] = 1
+                a[j,i] = 1
+        a[i,i] = 1
+            
+    a = csr_matrix(a)
+    return a
+    
+
+
+
+
+def build_laplacian(a_matrix, normalize=False):
+    print("Normalize? %s" % str(normalize))
+    (n, _) = a_matrix.shape
+    d_matrix = dok_matrix((n,n))
+    node_degrees = a_matrix.sum(axis=0)
+    
+    for i in xrange(n):
+        d_matrix[i,i] = node_degrees[0,i]
+    
+    laplacian = csr_matrix(d_matrix - a_matrix)
+    
+    if(normalize):
+        sqrt_diag = csr_matrix((n,n))
+        for i in xrange(n):
+            sqrt_diag[i,i] = 1.0 / np.sqrt(d_matrix[i,i])
+        
+        laplacian = sqrt_diag * laplacian * sqrt_diag
+    
+    
+    return laplacian
+
+
+def sorted_eig(a):
+    eigenValues,eigenVectors = np.linalg.eig(a)
+
+    idx = eigenValues.argsort()   
+    eigenValues = eigenValues[idx]
+    eigenVectors = eigenVectors[:,idx]
+    
+    return eigenValues, eigenVectors
+
+
+def spectral_clustering(road_map=None, a=None, use_ncut=False, num_clusters=2):
+    print("Building adjacency matrix")
+    if(a==None):
+        a = build_adjacency_matrix(road_map)
+    
+    print("Computing laplacian")
+    l = build_laplacian(a, normalize=use_ncut)
+    
+    print("Spectral embedding")
+    #e_vals, e_vects = eigsh(l, k=num_clusters, which='SM', tol=0.01, sigma=2.01)
+    X = np.random.rand(l.shape[0], num_clusters+1)
+    e_vals, e_vects = lobpcg(l, X, tol=1e-15,
+                                            largest=False, maxiter=2000)    
+    
+    
+    
+    embedded_data = e_vects[:,1:]
+    
+    print e_vals
+    
+    
+
+    print("Clustering")
+    centroid, label, intertia = k_means(embedded_data, num_clusters)
+    
+    for i in xrange(len(label)):
+        road_map.nodes[i].region_id = label[i]
+
+
+
+
+
+
+
+
+
 # Runs the clustering for multiple values of K and imbalance, and plots all of the results
 # in one big PDF
 def run_many_tests():
@@ -194,3 +308,40 @@ def run_many_tests():
     plot_map('tmp_cluster.csv', 'graph_clusters.pdf')
     
     
+# Runs the clustering for multiple values of K and imbalance, and plots all of the results
+# in one big PDF
+def run_many_tests_spectral():
+    print("Loading")
+    road_map = Map("nyc_map4/nodes_no_nj.csv", "nyc_map4/links_no_nj.csv", limit_bbox=Map.reasonable_nyc_bbox)
+    print("Saving")
+    road_map.save_as_metis('nyc_map4/nyc_no_nj.metis')
+
+    print("Clustering")
+
+    append = False
+    #imb_vals = [10,15,20,25]
+    #k_vals = [2,3,4,5,6,7,8,9,10,15,20,30,40,50,100]
+    
+
+    k_vals = [2,3,4,5,6,7,8,9,10]      
+    for k in k_vals:
+        
+        print ("k=%d" % k)
+        # Cluster the graph into K clusters with imb% imbalance allowed
+        
+        spectral_clustering(road_map=road_map, use_ncut=True, num_clusters=k)
+
+        
+        # Output the clusters to the file.
+        output_clusters(road_map, k, 0, 'tmp_cluster_ncut.csv', append=append)
+        # Future clusterings will be appended to the file instead of overwriting
+        append=True 
+
+
+        #print("Saving")
+        #nodes_fn = 'nyc_map4/nodes_no_nj_imb%d_k%d.csv' % (imb, k)
+        #links_fn = 'nyc_map4/links_no_nj_imb%d_k%d.csv' % (imb, k)
+        #road_map.save_as_csv(nodes_fn, links_fn)
+            
+    # Once the file is produced, plot it
+    plot_map('tmp_cluster_ncut.csv', 'n_cut_graph_clusters.pdf')

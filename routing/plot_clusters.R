@@ -11,7 +11,8 @@ mycols = c("black", "blue", "red", "green", "yellow", "purple", "orange", "grey"
 
 
 plot_regions = function(t, k, imbalance){
-	title = paste("KaFFPaE Cut : ", imbalance, "% imbalance, ", k , " clusters", sep="")
+	#title = paste("KaFFPaE Cut : ", imbalance, "% imbalance, ", k , " clusters", sep="")
+	title = paste("Ratio Cut : ", k , " clusters", sep="")
 	print(nrow(t))
 	plot(t$lon, t$lat, col=getcol(t$region), pch=16, cex=.5, main=title,
 		xlab="Longitude", ylab="Latitude")

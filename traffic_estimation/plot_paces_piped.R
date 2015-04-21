@@ -20,6 +20,14 @@ linearScale = function(x, lo, hi){
 	return(pmax(pmin(x, 1), 0))
 }
 
+# x - vector of data
+# lo/hi - interval of interesting data
+createColors = function(x, lo, hi){
+	cvals = linearScale(x, lo, hi)
+	cols = rgb(jet.colors(cvals)/255)
+	return(cols)
+}
+
 
 
 argv = commandArgs(trailingOnly=T)

@@ -161,13 +161,24 @@ def load_travel_times(road_map, datetime):
     #print("Loaded " + str(i) + " records.")
 
 
+def drop_link_counts_table():
+    sql = "DROP TABLE link_counts;"
+    #try:
+    db_main.execute(sql)
+    #except:
+    #    print("Error dropping link counts table")
+    
+
 
 
 def create_link_counts_table():
+    drop_link_counts_table()
+    
     sql = """CREATE TABLE link_counts (
         begin_node_id BIGINT,
         end_node_id BIGINT,
-        avg_num_trips FLOAT);"""
+        avg_num_trips FLOAT,
+        perc_obs FLOAT);"""
     
     try:
         db_main.execute(sql)
@@ -177,13 +188,14 @@ def create_link_counts_table():
     
 
 
-def save_link_counts(count_dict):
+def save_link_counts(count_dict, perc_dict):
     sqls = []
     for (begin_node_id, end_node_id) in count_dict:
         count = count_dict[(begin_node_id, end_node_id)]
+        perc_obs = perc_dict[(begin_node_id, end_node_id)]
         
-        sql = "INSERT INTO link_counts VALUES(%d,%d,%f);" % (
-            begin_node_id,end_node_id,count)
+        sql = "INSERT INTO link_counts VALUES(%d,%d,%f,%f);" % (
+            begin_node_id,end_node_id,count, perc_obs)
         sqls.append(sql)
     
     db_main.execute("DELETE FROM link_counts;")
