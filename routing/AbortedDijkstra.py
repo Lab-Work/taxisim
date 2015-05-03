@@ -82,6 +82,10 @@ def aborted_dijkstra(origin_node, boundary_nodes, this_region_only=False,
             # update it (relaxation)
             if(proposed_distance < neighbor_time[i]):
                 neighbor_time[i] = proposed_distance
+                if on_forward_graph:
+                    neighbor.forward_predecessors[i] = node
+                else:
+                    neighbor.backward_predecessors[i] = node
                 # since the distance was updated, this node needs to be
                 # re-added to the PQ
                 nodes_to_search.put((proposed_distance, neighbor))

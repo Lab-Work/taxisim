@@ -99,6 +99,12 @@ class Map:
                     pass
                 if connecting_node.region_id != node.region_id:
                     connecting_node.is_boundary_node = True
+            for connecting_link in node.backward_links:
+                connecting_node = connecting_link.origin_node
+                if connecting_node is None:
+                    pass
+                if connecting_node.region_id != node.region_id:
+                    connecting_node.is_boundary_node = True
 
         print "total regions : " + str(next_region_id)
 
@@ -106,16 +112,14 @@ class Map:
     def get_max_speed(self):
         max_speed = 0.0
         for link in self.links:
-            if(link != self.idle_link):
-                link_speed = float(link.length) / link.time
-                max_speed = max(max_speed, link_speed)
+            link_speed = float(link.length) / link.time
+            max_speed = max(max_speed, link_speed)
         return max_speed
 
     def get_default_speed(self):
         for link in self.links:
-            if(link != self.idle_link and link.num_trips==0):
-                link_speed = float(link.length) / link.time
-                return link_speed
+            link_speed = float(link.length) / link.time
+            return link_speed
         return None
 
     def set_all_link_speeds(self, speed):
@@ -485,12 +489,6 @@ class Map:
         for i in xrange(len(self.links)):
             self.links[i].link_id = i
 
-        # Create the "idle link", which represents waiting
-        self.idle_link = Link(0,0,0)
-        self.idle_link.time = 300 # Default waiting time of 5 minutes
-        self.idle_link.link_id = i + 1
-        self.links.append(self.idle_link)
-
 
         # Clean the graph by removing extra SCCs
         self.remove_extra_sccs()
@@ -551,15 +549,7 @@ class Map:
             if(scc!=largest_scc):
                 bad_nodes.update(scc)
         
-        # remove these nodes from the graph
-        self.nodes = [node for node in self.nodes if node not in bad_nodes]
-
-        # remove links connected to these nodes
-        for node in bad_nodes:
-            for link in node.forward_links:
-                link.connecting_node.backward_links.remove(link)
-            for link in node.backward_links:
-                link.origin_node.forward_links.remove(link)
+        self.delete_nodes(bad_nodes)
 
 
     # Builds KD trees to spatially index the nodes of the graph.  This makes
@@ -658,7 +648,7 @@ class Map:
         if(num_cpus <= 1):
             #Don't use parallel processing - just route all of the trips
             for trip in trips:
-                trip.path_links = bidirectional_search(trip.origin_node, trip.dest_node, use_astar=astar_used, use_arcflags=arcflags_used, max_speed=max_speed)
+                trip.path_links = bidirectional_search(trip.origin_node, trip.dest_node, use_astar=astar_used, use_arcflags=arcflags_used, max_speed=max_speed, curr_map=self)
         else:
             #Use parallel processing - split the trips into chunks
             pass

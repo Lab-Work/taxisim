@@ -6,6 +6,7 @@ from Map import Map
 from db_functions import db_arc_flags
 from db_functions import db_main
 from datetime import datetime
+from traffic_estimation import plot_estimates
 
 
 
@@ -39,16 +40,11 @@ class ArcFlagsPreProcess:
 
         i = 0
         print nyc_map.total_region_count
-        start = timeit.default_timer()
         for region_id in range(nyc_map.total_region_count):
-            print "Next Region!"
-            if i % 10 == 0:
-                stop = timeit.default_timer()
-                print stop - start
+            # print "Next Region!"
 
             boundary_nodes = nyc_map.get_region_boundary_nodes(region_id)
 
-            start = timeit.default_timer()
             # Does a multi-origin bidirectional dijkstra search to get an
             # arcflag tree
             warmstart = True
@@ -57,11 +53,33 @@ class ArcFlagsPreProcess:
                                                       nyc_map,
                                                       warmstart,
                                                       use_domination_value)
+            #####################################################################
+            # DRAW ARC_FLAGS USING THIS
+            # pace_dict = {}
+            # for link in nyc_map.links:
+            #     if link.backward_arc_flags_vector[i] == True:
+            #         pace_dict[(link.origin_node_id, link.connecting_node_id)] = 5
+            #     else:
+            #         pace_dict[(link.origin_node_id, link.connecting_node_id)] = -5
+            # plot_estimates.plot_speed(nyc_map, "Backward Arc Flags Region: " + str(i), "Backward"+str(i), pace_dict)
+
+            # pace_dict = {}
+            # for link in nyc_map.links:
+            #     if link.forward_arc_flags_vector[i] == True:
+            #         pace_dict[(link.origin_node_id, link.connecting_node_id)] = 5
+            #     else:
+            #         pace_dict[(link.origin_node_id, link.connecting_node_id)] = -5
+
+            # plot_estimates.plot_speed(nyc_map, "Forward Arc Flags Region: " + str(i), "Forward"+str(i), pace_dict)
+
+            #####################################################################
             i += 1
-        stop = timeit.default_timer()  # debug - only process one grid
-        print "Running time:", stop - start, "seconds"  # debug
+
+
         d = datetime(2012,3,5,2)
         db_arc_flags.save_arc_flags(nyc_map, d)
+
+
         db_main.close()
         # This is a hexadecimal string that converts region to true or false
         # RegionNumber           = 0, 1, 2, 3, 4, 5, 6, 7

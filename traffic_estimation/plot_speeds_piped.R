@@ -54,7 +54,7 @@ if(plot_type=="absolute"){
 
 #print(paste("Reading", infile))
 
-png(outfile, 1024, 1024)
+png(outfile, 4096, 4096)
 par(mar=c(0,2,4,2), family="sans")
 layout(c(1,2), heights=c(7,1))
 
@@ -99,7 +99,7 @@ abline(v = clon*lon_meters, col = "black", lwd = 2000)
 
 
 
-segments(t$start_lon, t$start_lat, x1=t$end_lon, y1=t$end_lat, col=cols, lwd=3)
+arrows(t$start_lon, t$start_lat, x1=t$end_lon, y1=t$end_lat, col=cols, lwd=1, angle=15, length=.1)
 
 
 
@@ -137,7 +137,7 @@ plot(0,0, type="n", xlim=c(lo_pace,hi_pace), ylim=c(0,1), xaxt="n", yaxt="n", , 
 		units = "Pace Z-Score"
 	}
 	text(x=(hi_pace+lo_pace)/2,y=.9,labels=units, cex=2, col.main="white")
-	segments(x0=vals[a],y0=.4,x1=vals[a],y1=.6, lwd=2)
+	arrows(x0=vals[a],y0=.4,x1=vals[a],y1=.6, lwd=1, angle=15, length=.1)
 	text(x=vals[a],y=.2,labels=vals[a], cex=2, )
 
 dev.off()

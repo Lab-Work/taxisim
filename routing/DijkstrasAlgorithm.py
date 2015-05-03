@@ -97,10 +97,10 @@ class DijkstrasAlgorithm:
     @staticmethod
     def directed_dijkstra(boundary_nodes, nyc_map, warm_start,
                           use_domination_value, on_forward_graph):
-        if on_forward_graph:
-            print("---Computing on the forward graph---")
-        else:
-            print("---Computing on the backward graph---")
+        # if on_forward_graph:
+            # print("---Computing on the forward graph---")
+        # else:
+            # print("---Computing on the backward graph---")
 
         max_queue_size = 0  # debug
         expansion_count = 0  # debug
@@ -108,14 +108,14 @@ class DijkstrasAlgorithm:
         # Compute pairwise distances between boundary nodes, so only good
         # information is propagated
         if warm_start:
-            print("Warmstarting...")
+            # print("Warmstarting...")
             touched_nodes = DijkstrasAlgorithm.initialize_boundary_nodes(
                 boundary_nodes, nyc_map, False, on_forward_graph)
         else:
             touched_nodes = boundary_nodes
 
-        print("Running Dijkstra with " + str(len(boundary_nodes))
-              + " boundary nodes.")
+        # print("Running Dijkstra with " + str(len(boundary_nodes))         
+              # + " boundary nodes.")
         # Nodes we intend to search (somehow connected to graph so far). We
         # treat this as a priority queue: the one that has the potential to be
         # closest (has best distance from the start_node/is closest to the
@@ -123,21 +123,31 @@ class DijkstrasAlgorithm:
         nodes_to_search = Queue.PriorityQueue()
 
         for node in touched_nodes:
-            if(warm_start is False or
-               node.get_boundary_time_inf_count(on_forward_graph) == 0):
-                nodes_to_search.put((
-                    # times updated since it was last expanded
-                    node.get_priority_key(use_domination_value,
-                                          on_forward_graph),
-                    # minimum time from boundary node
-                    node.get_min_boundary_time(on_forward_graph),
-                    # number of infinities in the list
-                    node.get_boundary_time_inf_count(on_forward_graph),
-                    # sum of non infinities in the list
-                    node.get_boundary_time_sum(on_forward_graph),
-                    # the actual node itself
-                    node))
-
+            if not(node.region_id == boundary_nodes[0].region_id and node.is_boundary_node):
+                if on_forward_graph:
+                    node.forward_boundary_time = np.repeat(
+                    float("INF"), len(boundary_nodes))
+                    node.forward_predecessors = (
+                    np.array([None] * len(boundary_nodes)))
+                else:
+                    node.backward_boundary_time = np.repeat(
+                    float("INF"), len(boundary_nodes))
+                    node.backward_predecessors = (
+                    np.array([None] * len(boundary_nodes)))
+        for add_node in boundary_nodes:
+            nodes_to_search.put((
+                # times updated since it was last expanded
+                add_node.get_priority_key(
+                    use_domination_value, on_forward_graph),
+                # minimum time from boundary node
+                add_node.get_min_boundary_time(on_forward_graph),
+                # number of infinities in the list
+                add_node.get_boundary_time_inf_count(
+                    on_forward_graph),
+                # sum of non infinities in the list
+                add_node.get_boundary_time_sum(on_forward_graph),
+                # the actual node itself
+                add_node))
         while not nodes_to_search.empty():
             # Gets the node closest to the end node in the best case
             if (nodes_to_search.qsize() > max_queue_size):
@@ -228,8 +238,8 @@ class DijkstrasAlgorithm:
                         # the actual node itself
                         connected_node))
 
-        print("Max Queue Size: " + str(max_queue_size))  # debug
-        print("Number of expansions: " + str(expansion_count))  # debug
+        # print("Max Queue Size: " + str(max_queue_size))  # debug
+        # print("Number of expansions: " + str(expansion_count))  # debug
 
     # Basically creates a tree rooted at the boundary node where every edge in
     # the tree is an arcflag
@@ -240,22 +250,24 @@ class DijkstrasAlgorithm:
         # Assign sequential IDs to the boundary nodes of this region
         DijkstrasAlgorithm.init_boundary_node_ids(boundary_nodes)
 
-        print("Initializing...")
+        # print("Initializing...")
         # Gives each node a distance from the boundary nodes, which are
         # initially either INF(infinity) or 0
         DijkstrasAlgorithm.initialize_nodes(boundary_nodes, nyc_map)
 
-        print "processing forward graph"
+        # print "processing forward graph"
         DijkstrasAlgorithm.directed_dijkstra(boundary_nodes, nyc_map,
                                              warm_start, use_domination_value,
                                              on_forward_graph=True)
-        print "processing backward graph"
+        # print "processing backward graph"
         DijkstrasAlgorithm.directed_dijkstra(boundary_nodes, nyc_map,
                                              warm_start, use_domination_value,
                                              on_forward_graph=False)
-        
+
+        # DijkstrasAlgorithm.independent_dijkstra(boundary_nodes, nyc_map)
+
         DijkstrasAlgorithm.set_arc_flags(nyc_map, boundary_nodes[0].region_id)
-        print
+        # print
 
     # Runs a Dijkstra search independently for each boundary node.
     @staticmethod
@@ -308,6 +320,21 @@ class DijkstrasAlgorithm:
                 if predecessor_node is not None:
                     assignLink = nyc_map.links_by_node_id[(predecessor_node.node_id, node.node_id)]
                     assignLink.backward_arc_flags_vector[curr_region_id] = True
+
+
+        for link in nyc_map.links:
+            connect_node = nyc_map.nodes_by_id[link.connecting_node_id]
+            forward_region_id = connect_node.region_id
+            link.forward_arc_flags_vector[forward_region_id] = True
+
+
+            origin_node = nyc_map.nodes_by_id[link.origin_node_id]
+            backward_region_id = origin_node.region_id
+            link.backward_arc_flags_vector[backward_region_id] = True
+
+
+            link.forward_arc_flags_vector[backward_region_id] = True
+            link.backward_arc_flags_vector[forward_region_id] = True
 
 
 

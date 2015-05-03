@@ -34,7 +34,8 @@ class Trip:
         #self.csvLine = csvLine
         
         [medallion, hack_license, vendor_id, rate_code, store_and_fwd_flag, pickup_datetime, dropoff_datetime, passenger_count, trip_time_in_secs, trip_distance, pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude, payment_type, fare_amount, surcharge, mta_tax, tip_amount, tolls_amount, pickup_geom, dropoff_geom, day_of_week, hours_of_day] = record
-                 
+        
+        self.medallion = medallion
 
         try:
             [self.fromLon, self.fromLat, self.toLon, self.toLat, self.dist] = map(float, 

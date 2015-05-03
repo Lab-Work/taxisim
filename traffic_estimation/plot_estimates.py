@@ -11,7 +11,7 @@ from multiprocessing import Pool
 from subprocess import Popen, PIPE
 
 from db_functions import db_main, db_travel_times
-from routing.Map import Map
+# from routing.Map import Map
 from functools import partial
 
 
@@ -70,6 +70,7 @@ def plot_speed(road_map, dt, filename, pace_dict=None):
     lines = road_map.get_pace_table(num_trips_threshold=1, pace_dict=pace_dict)
     # Convert table to CSV format and pipe it to the Rscript
     csv_lines = [",".join(map(str, line)) for line in lines]
+    print "CSV_lines count: " + str(len(csv_lines))
     data = "\n".join(csv_lines)   
     
     

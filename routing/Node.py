@@ -82,7 +82,7 @@ class Node:
         self.update_count = 0
 
         # Identifies which region this node belongs to
-        self.region_id = (None, None)
+        self.region_id = -1
 
     # Used for the KD-tree - the node can be used as an array-like object
     def __getitem__(self, x):

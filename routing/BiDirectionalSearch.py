@@ -3,8 +3,9 @@ from Node import *
 from Queue import PriorityQueue
 from random import randint
 from datetime import datetime
+from traffic_estimation import plot_estimates
 
-HEURISTIC_DISCOUNT = .8
+HEURISTIC_DISCOUNT = .75
 
 
 # Uses bidirectional search to find the shortest path between start_node and end_node
@@ -21,7 +22,8 @@ def bidirectional_search(
         end_node,
         use_astar=False,
         use_arcflags=False,
-        max_speed=1.0):
+        max_speed=1.0,
+        curr_map=None):
     # Step 1 - perform the actual dijkstra search
     (center_node,
      forward_pq,
@@ -31,7 +33,8 @@ def bidirectional_search(
                                                  end_node,
                                                  use_astar,
                                                  use_arcflags,
-                                                 max_speed)
+                                                 max_speed, 
+                                                 curr_map)
 
     if(center_node==None):
         return None
@@ -64,7 +67,7 @@ def bidirectional_dijkstra(
         end_node,
         use_astar=False,
         use_arcflags=False,
-        max_speed=1.0):
+        max_speed=1.0, curr_map=None):
     # Initialize the priority queue for the forward search from the origin
     forward_pq = PriorityQueue()
     start_node.forward_time = 0
@@ -148,7 +151,7 @@ def bidirectional_dijkstra(
         for link in node.backward_links:
             # Proposed time of reaching this neighbor via this node
             if use_arcflags == True:
-                if link.backward_arc_flags_vector[end_node.region_id] == 0:
+                if link.backward_arc_flags_vector[start_node.region_id] == 0:
                     continue
             proposed_cost = node.backward_time + link.time
 
@@ -168,6 +171,35 @@ def bidirectional_dijkstra(
                 backward_pq.put((proposed_cost, link, link.origin_node))
 
     if(center_node is None):
+        # path = bidirectional_search(start_node, end_node)
+        # pace_dict = {}
+        # for link in curr_map.links:
+        #     pace_dict[(link.origin_node_id, link.connecting_node_id)] = -5
+
+        # for link in path:
+        #     pace_dict[(link.origin_node_id, link.connecting_node_id)] = 5
+
+        # plot_estimates.plot_speed(curr_map, "Trip that failed", "Failed" + start_node.node_id + end_node.node_id, pace_dict)
+
+        # pace_dict = {}
+        # for link in curr_map.links:
+        #     if link.forward_arc_flags_vector[end_node.region_id] == True:
+        #         pace_dict[(link.origin_node_id, link.connecting_node_id)]= 5
+        #     else:
+        #         pace_dict[(link.origin_node_id, link.connecting_node_id)]= -5
+
+        # plot_estimates.plot_speed(curr_map, "Forward Arc Flags", "Forward" + start_node.node_id + " " + end_node.node_id, pace_dict)
+
+
+        # pace_dict = {}
+        # for link in curr_map.links:
+        #     if link.forward_arc_flags_vector[origin_node.region_id] == True:
+        #         pace_dict[(link.origin_node_id, link.connecting_node_id)]= 5
+        #     else:
+        #         pace_dict[(link.origin_node_id, link.connecting_node_id)]= -5
+
+        # plot_estimates.plot_speed(curr_map, "Backward Arc Flags", "Backward" + start_node.node_id + " " + end_node.node_id, pace_dict)
+
         print("Bidirectional search has failed.")
 
     return (

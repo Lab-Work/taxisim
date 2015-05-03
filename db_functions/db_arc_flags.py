@@ -78,7 +78,7 @@ def save_arc_flags(road_map, datetime):
     db_main.execute(sql)
     
     
-    BULK_SIZE=5000
+    BULK_SIZE=1000
     # Create a prepared statement
     db_main.execute("PREPARE af_plan (BIGINT, BIGINT, TIMESTAMP, varchar(200), varchar(200)) AS "
     "INSERT INTO arc_flags VALUES($1, $2, $3, $4, $5);") #___________________HERE______________________
@@ -87,6 +87,7 @@ def save_arc_flags(road_map, datetime):
     
     # Loop through the Links and create a bunch of EXECUTE statements
     for link in road_map.links:
+        print link.get_forward_arcflags_hex()
         sql = "EXECUTE af_plan(%d, %d, %s, %s, %s);" % (
             link.origin_node_id, link.connecting_node_id, date_str, "\'" + link.get_forward_arcflags_hex() + "\'", "\'" + link.get_backward_arcflags_hex() + "\'") #___________________HERE______________________
         sqls.append(sql)

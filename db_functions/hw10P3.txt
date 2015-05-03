@@ -1,0 +1,15 @@
+Let delta = 2k + m(n + 1)
+At lease delta clauses will be satisfied if there is an independent set of size k or larger.
+Suppose there is an independent set of k or larger, then we have to accept 2k clauses for every node that we have in the indepenedet set.
+If it is an independent set, then all edges clauses are true because 2 connected vertices cannot be in the independent set (at lease one vertex in every edge pair will be 0)
+
+There is an independent set of size k or larger if at least delta clauses are satisfied in the formula. 
+We will do a proof by contradiction to prove this.
+Suppose at lease delta clauses are satisfied in the formula. Now suppose there is not an independent set of size k or larger. 
+The total number of clauses that are possible are 2n + m(n + 1), if there is not an independent set of size k, then we know more than 2(n-k) clauses are false because we have n nodes and at best, k-1 nodes are part of the independent set. Sine we have 2 clauses for each vertex we know that we are taking out more than 2(n-k) nodes.
+Then 
+	2n + m(n+1) - 2(n-k)
+		2n + m(n+1) - 2n + 2k
+			m(n+1) + 2k
+
+			but since we are taking out more than 2(n-k) nodes we get less than 2k+m(n+1) satisfied clauses which is a contradiction.
