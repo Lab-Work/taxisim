@@ -13,7 +13,7 @@ def region_graph_generator(road_map):
 	partition_graph.plot_map("cluster.csv", "output")
 
 
-def createMap(size):
+def createMap(region_size):
 
 	db_main.connect("db_functions/database.conf")
 
@@ -26,8 +26,8 @@ def createMap(size):
 
 	trips_arc = db_trip.find_pickup_dt(dt1, dt2)
 	
-
-	approxSize = len(trips_arc)/31
+	region_size = region_size/4
+	approxSize = len(trips_arc)/region_size
 
 	arc_flags_map = Map.Map("nyc_map4/nodes.csv", "nyc_map4/links.csv",
 		                      lookup_kd_size=1, region_kd_size=approxSize,

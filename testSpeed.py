@@ -175,7 +175,7 @@ def draw_arc_flags(road_map, region, forward_arc_flags = True):
 
 
 
-run_test(1000, False)
+run_test(64, False)
 # arr = [4000, 2000, 1000, 500, 250, 125]
 # for i in arr:
 # 	run_test(i, True)
