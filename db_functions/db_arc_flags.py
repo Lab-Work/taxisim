@@ -87,7 +87,6 @@ def save_arc_flags(road_map, datetime):
     
     # Loop through the Links and create a bunch of EXECUTE statements
     for link in road_map.links:
-        print link.get_forward_arcflags_hex()
         sql = "EXECUTE af_plan(%d, %d, %s, %s, %s);" % (
             link.origin_node_id, link.connecting_node_id, date_str, "\'" + link.get_forward_arcflags_hex() + "\'", "\'" + link.get_backward_arcflags_hex() + "\'") #___________________HERE______________________
         sqls.append(sql)

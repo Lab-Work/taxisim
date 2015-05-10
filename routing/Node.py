@@ -33,6 +33,8 @@ class Node:
         self.location = (self.lat * 111194.86461, self.long * 84253.1418965)
         self.region = int(region)
 
+
+        self.trip_weight = 1
         # Used for DFS
         self.discovered = False
 

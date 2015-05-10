@@ -29,7 +29,8 @@ def bidirectional_search(
      forward_pq,
      forward_expanded,
      backward_pq,
-     backward_expanded) = bidirectional_dijkstra(start_node,
+     backward_expanded,
+     paths_expanded) = bidirectional_dijkstra(start_node,
                                                  end_node,
                                                  use_astar,
                                                  use_arcflags,
@@ -40,6 +41,11 @@ def bidirectional_search(
         return None
     # Step 2 - reconstruct the path, using the pointers left on the node objects
     path = reconstruct_path(center_node)
+
+    # create a text file for comparing edges explored to length of trip for performance reasons
+    # if use_arcflags == True and use_astar == True:
+    #     f = open("data.txt", 'a+')
+    #     f.write(str(len(path)) + "\t" + str(paths_expanded) + "\n")
 
     # Step 3 - clean up (reset pointers and time costs on node objects)
     # Note that we only need to do this on nodes touched by the search
@@ -207,7 +213,8 @@ def bidirectional_dijkstra(
         forward_pq,
         forward_expanded,
         backward_pq,
-        backward_expanded)
+        backward_expanded,
+        len(forward_expanded) + len(backward_expanded))
 
 # Uses the output from bidirectional_dijkstra() to reconstruct the shortest path
 # Params:

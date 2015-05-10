@@ -31,19 +31,37 @@ class KDTree:
     # on the next dimension and so on)
     # leaf_size - stop splitting when a child has less than this many data
     # points
-    def __init__(self, data, split_dim=0, leaf_size=100):
+    def __init__(self, data, split_dim=0, leaf_size=100, split_weights = False):
 
         self.split_dim = split_dim
-        if(len(data) <= leaf_size):
-            # Not enough data - this tree is a leaf node
+        stop = False
+        if split_weights == False:
+            if(len(data) <= leaf_size):
+                # Not enough data - this tree is a leaf node
+                stop = True
+        else:
+            if sum(node.trip_weight for node in data) <= leaf_size:
+                stop = True
+        if stop == True:
             self.data = data
         else:
             num_dimensions = len(data[0])
             # Identify the median as the split point
             # TODO: This is currently done the "easy way".
             # A linear time algorithm or simpler criteria could be used
+            mid = 0
             data.sort(key=lambda x: x[split_dim])
-            mid = len(data) / 2
+            if split_weights == True:
+                totSum = sum(node.trip_weight for node in data)
+                curr = 0
+                for i in range(len(data)):
+                    curr += data[i].trip_weight
+                    if curr >= totSum/2:
+                        mid = i
+                        break
+            else:
+                mid = len(data) / 2
+
             self.split_val = data[mid][split_dim]
 
             # Child trees will split on the next dimension (cycle after running
@@ -51,8 +69,8 @@ class KDTree:
             next_dim = (self.split_dim + 1) % num_dimensions
 
             # Recursively grow children
-            self.low_child = KDTree(data[:mid], next_dim, leaf_size)
-            self.hi_child = KDTree(data[mid:], next_dim, leaf_size)
+            self.low_child = KDTree(data[:mid], next_dim, leaf_size, split_weights)
+            self.hi_child = KDTree(data[mid:], next_dim, leaf_size, split_weights)
             self.data = None
 
     # Returns the leaf node that a query point is geometricaly in

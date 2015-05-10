@@ -8,6 +8,7 @@ import sys
 from traffic_estimation import plot_estimates
 from routing import partition_graph
 from routing import DijkstrasAlgorithm
+import cluster_kd
 # from DijkstrasAlgorithm import DijkstrasAlgorithm
 
 
@@ -57,10 +58,12 @@ def run_test(region_size, preprocess=False):
 		stop = timeit.default_timer()
 		print "The time for preprocessing was " + str(stop-start)
 
-	arc_flags_map = Map.Map("nyc_map4/nodes.csv", "nyc_map4/links.csv",
-	                      lookup_kd_size=1, region_kd_size=region_size,
-	                      limit_bbox=Map.Map.reasonable_nyc_bbox)
-	arc_flags_map.assign_node_regions()
+	# arc_flags_map = Map.Map("nyc_map4/nodes.csv", "nyc_map4/links.csv",
+	#                       lookup_kd_size=1, region_kd_size=region_size,
+	#                       limit_bbox=Map.Map.reasonable_nyc_bbox)
+	# arc_flags_map.assign_node_regions()
+
+	arc_flags_map = cluster_kd.createMap(region_size)
 	arc_flags_map.assign_link_arc_flags()
 
 	###########################
@@ -93,6 +96,8 @@ def run_test(region_size, preprocess=False):
 	trips_both = db_trip.find_pickup_dt(dt1, dt2)
 	trips_both = arc_flags_map.match_trips_to_nodes(trips_both)
 
+	db_main.close()
+
 	same = True
 	# for i in range(len(trips_star)):
 	# 	if trips_star[i].fromLon != trips_arc[i].fromLon:
@@ -103,20 +108,20 @@ def run_test(region_size, preprocess=False):
 
 	print "got " + str(len(trips_arc)) + " trips"
 
-	start = timeit.default_timer()
-	arc_flags_map.routeTrips(trips_none)
-	stop = timeit.default_timer()
-	print "Computed trips using normal dijkstras in " + str(stop-start)
+	# start = timeit.default_timer()
+	# arc_flags_map.routeTrips(trips_none)
+	# stop = timeit.default_timer()
+	# print "Computed trips using normal dijkstras in " + str(stop-start)
 
-	start = timeit.default_timer()
-	arc_flags_map.routeTrips(trips_star, astar_used=True)
-	stop = timeit.default_timer()
-	print "Computed trips using Astar in " + str(stop-start)
+	# start = timeit.default_timer()
+	# arc_flags_map.routeTrips(trips_star, astar_used=True)
+	# stop = timeit.default_timer()
+	# print "Computed trips using Astar in " + str(stop-start)
 
-	start = timeit.default_timer()
-	arc_flags_map.routeTrips(trips_arc, arcflags_used=True)
-	stop = timeit.default_timer()
-	print "Computed trips using arc_flags in " + str(stop-start)
+	# start = timeit.default_timer()
+	# arc_flags_map.routeTrips(trips_arc, arcflags_used=True)
+	# stop = timeit.default_timer()
+	# print "Computed trips using arc_flags in " + str(stop-start)
 
 	start = timeit.default_timer()
 	arc_flags_map.routeTrips(trips_both, arcflags_used=True, astar_used=True)
@@ -127,13 +132,10 @@ def run_test(region_size, preprocess=False):
 	same = True
 	for i in range(len(trips_arc)):
 		if trips_none[i].path_links != trips_star[i].path_links:
-			# print "1"
 			same = False
 		if trips_none[i].path_links != trips_both[i].path_links:
-			# print "2"
 			same = False
 		if trips_none[i].path_links != trips_arc[i].path_links:
-			# print "3"
 			time1 = 0
 			time2 = 0
 			draw_graphs(trips_none, trips_arc, arc_flags_map, i)
@@ -172,12 +174,12 @@ def draw_arc_flags(road_map, region, forward_arc_flags = True):
 
 
 
+
+run_test(1000, False)
 # arr = [4000, 2000, 1000, 500, 250, 125]
 # for i in arr:
 # 	run_test(i, True)
 
-run_test(250, True)
-# run_test(125, True)
 
 
 def run_independent(failed_trip, i):

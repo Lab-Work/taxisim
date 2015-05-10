@@ -36,10 +36,8 @@ class Link:
     def decode_forward_arcflags_hex(self, hex_string, region_count):
         self.decode_flags(hex_string, self.forward_arc_flags_vector, region_count)
 
-
     def decode_backward_arcflags_hex(self, hex_string, region_count):
         self.decode_flags(hex_string, self.backward_arc_flags_vector, region_count)
-        
 
     def decode_flags(self, hex_string, direction, region_count):
         if direction == None:
@@ -53,6 +51,19 @@ class Link:
 
 
 
+    # def decode_flags(self, hex_string, direction, region_count):
+    #     if direction == None:
+    #         direction = np.empty(hex_string*4, dtype=bool)
+    #     bin_string = bin(int(hex_string, 16))[2:]
+    #     start = 0
+    #     if len(bin_string) < region_count:
+    #         start = region_count-len(bin_string)
+    #     if len(bin_string) > region_count:
+    #         bin_string = bin_string[:region_count]
+
+    #     for i in range(start, len(bin_string)):
+    #         if bin_string[i] == "1":
+    #             direction[i] = True
 
 
 

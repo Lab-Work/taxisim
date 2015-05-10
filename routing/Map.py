@@ -554,9 +554,12 @@ class Map:
 
     # Builds KD trees to spatially index the nodes of the graph.  This makes
     # geographic queries much faster
-    def build_kd_trees(self):
+    def build_kd_trees(self, split_weights = False):
         # Finally, index nodes using KD Trees
-        self.region_kd_tree = KDTree(self.nodes, leaf_size=self.region_kd_size)
+        if split_weights == False:
+            self.region_kd_tree = KDTree(self.nodes, leaf_size=self.region_kd_size)
+        else:
+            self.region_kd_tree = KDTree(self.nodes, leaf_size=self.region_kd_size, split_weights=True)
         self.lookup_kd_tree = KDTree(self.nodes, leaf_size=self.lookup_kd_size)
     
     

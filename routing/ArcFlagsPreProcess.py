@@ -7,7 +7,7 @@ from db_functions import db_arc_flags
 from db_functions import db_main
 from datetime import datetime
 from traffic_estimation import plot_estimates
-
+import cluster_kd
 
 
 # Pre-process the map with arc flags.
@@ -27,16 +27,15 @@ class ArcFlagsPreProcess:
 
     @staticmethod
     def run(region_size = 250):
-        nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv",
-                      lookup_kd_size=1, region_kd_size=region_size,
-                      limit_bbox=Map.reasonable_nyc_bbox)
-        nyc_map.assign_node_regions()
+        # nyc_map = Map("nyc_map4/nodes.csv", "nyc_map4/links.csv",
+        #               lookup_kd_size=1, region_kd_size=region_size,
+        #               limit_bbox=Map.reasonable_nyc_bbox)
+        # nyc_map.assign_node_regions()
+        nyc_map = cluster_kd.createMap(region_size)
         nyc_map.assign_link_arc_flags()
 
         #nyc_map.save_region("../nyc_map4/region.csv")
-        db_main.connect("db_functions/database.conf")
         #get_correct_nodes(nyc_map, "../speeds_per_hour/" + map_file, None)
-        db_arc_flags.create_arc_flag_table()
 
         i = 0
         print nyc_map.total_region_count
@@ -77,6 +76,8 @@ class ArcFlagsPreProcess:
 
 
         d = datetime(2012,3,5,2)
+        db_main.connect("db_functions/database.conf")
+        db_arc_flags.create_arc_flag_table()
         db_arc_flags.save_arc_flags(nyc_map, d)
 
 
