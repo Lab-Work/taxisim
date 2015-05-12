@@ -113,15 +113,15 @@ def run_test(region_size, preprocess=False):
 	# stop = timeit.default_timer()
 	# print "Computed trips using normal dijkstras in " + str(stop-start)
 
-	# start = timeit.default_timer()
-	# arc_flags_map.routeTrips(trips_star, astar_used=True)
-	# stop = timeit.default_timer()
-	# print "Computed trips using Astar in " + str(stop-start)
+	start = timeit.default_timer()
+	arc_flags_map.routeTrips(trips_star, astar_used=True)
+	stop = timeit.default_timer()
+	print "Computed trips using Astar in " + str(stop-start)
 
-	# start = timeit.default_timer()
-	# arc_flags_map.routeTrips(trips_arc, arcflags_used=True)
-	# stop = timeit.default_timer()
-	# print "Computed trips using arc_flags in " + str(stop-start)
+	start = timeit.default_timer()
+	arc_flags_map.routeTrips(trips_arc, arcflags_used=True)
+	stop = timeit.default_timer()
+	print "Computed trips using arc_flags in " + str(stop-start)
 
 	start = timeit.default_timer()
 	arc_flags_map.routeTrips(trips_both, arcflags_used=True, astar_used=True)
@@ -175,7 +175,7 @@ def draw_arc_flags(road_map, region, forward_arc_flags = True):
 
 
 
-run_test(64, False)
+run_test(127, False)
 # arr = [4000, 2000, 1000, 500, 250, 125]
 # for i in arr:
 # 	run_test(i, True)

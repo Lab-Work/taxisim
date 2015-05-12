@@ -1,9 +1,11 @@
 from Node import *
 #from Map import Map
-from Queue import PriorityQueue
+#from Queue import PriorityQueue
+import heapq
 from random import randint
 from datetime import datetime
 from traffic_estimation import plot_estimates
+import timeit
 
 HEURISTIC_DISCOUNT = .75
 
@@ -74,26 +76,28 @@ def bidirectional_dijkstra(
         use_astar=False,
         use_arcflags=False,
         max_speed=1.0, curr_map=None):
+    
     # Initialize the priority queue for the forward search from the origin
-    forward_pq = PriorityQueue()
+    forward_pq = []
     start_node.forward_time = 0
-    forward_pq.put((0, None, start_node))
+    #forward_pq.put((0, None, start_node))
+    heapq.heappush(forward_pq, (0,None,start_node))    
     forward_expanded = []
 
     # Initialize the priority queue for the backward search from the destination
-    backward_pq = PriorityQueue()
+    backward_pq = []
     end_node.backward_time = 0
-    backward_pq.put((0, None, end_node))
+    heapq.heappush(backward_pq, (0, None, end_node))
     backward_expanded = []
 
     best_full_time = float('inf')
     center_node = None
 
     # The main loop alternates between forward and backward expansions
-    while(not forward_pq.empty() and not backward_pq.empty()):
+    while(len(forward_pq)>0 and len(backward_pq)>0):
 
         #### FORWARD EXPANSION ####
-        (cost, link, node) = forward_pq.get()
+        (cost, link, node) = heapq.heappop(forward_pq)
         forward_expanded.append(node)
         node.was_forward_expanded = True
 
@@ -134,10 +138,10 @@ def bidirectional_dijkstra(
                         link.connecting_node) - start_node.approx_dist_to(link.connecting_node)
                     proposed_cost += (distance_difference / 
                                       max_speed) * (HEURISTIC_DISCOUNT / 2)
-                forward_pq.put((proposed_cost, link, link.connecting_node))
+                heapq.heappush(forward_pq, (proposed_cost, link, link.connecting_node))
 
         #### BACKWARD EXPANSION ####
-        (cost, link, node) = backward_pq.get()
+        (cost, link, node) = heapq.heappop(backward_pq)
         backward_expanded.append(node)
         node.was_backward_expanded = True
 
@@ -174,7 +178,7 @@ def bidirectional_dijkstra(
                         link.origin_node) - end_node.approx_dist_to(link.origin_node)
                     proposed_cost += (distance_difference / 
                                       max_speed) * (HEURISTIC_DISCOUNT / 2)
-                backward_pq.put((proposed_cost, link, link.origin_node))
+                heapq.heappush(backward_pq, (proposed_cost, link, link.origin_node))
 
     if(center_node is None):
         # path = bidirectional_search(start_node, end_node)
@@ -256,7 +260,7 @@ def reconstruct_path(center_node):
 def cleanup(forward_pq, forward_expanded, backward_pq, backward_expanded):
     for node_pq in [forward_pq, backward_pq]:
         if(node_pq is not None):
-            for (priority, link, node) in node_pq.queue:
+            for (priority, link, node) in node_pq:
                 node.reset()
 
     for node_list in [forward_expanded, backward_expanded]:
