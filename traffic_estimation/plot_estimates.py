@@ -11,7 +11,7 @@ from multiprocessing import Pool
 from subprocess import Popen, PIPE
 
 from db_functions import db_main, db_travel_times
-# from routing.Map import Map
+from routing.Map import Map
 from functools import partial
 
 
@@ -33,6 +33,13 @@ def splitLists(lst1, lst2, numSegments):
             yield (lst1[lo:hi], None)
         else:
             yield (lst1[lo:hi], lst2[lo:hi])
+
+
+def safe_remove(filename):
+    try:
+        remove(filename)
+    except:
+        pass
 
 
 # A simple class which emulates the behavior of a Process Pool, but only uses
@@ -78,8 +85,8 @@ def plot_speed(road_map, dt, filename, pace_dict=None):
 
     p1 = Popen(['Rscript', 'traffic_estimation/plot_speeds_piped.R', filename, title, plot_type], stdout=PIPE, stdin=PIPE)
     _ = p1.communicate(data) # R output is discarded
-    del(_)
-    #print(_)
+    #del(_)
+    print(_)
 
     #remove(filename + ".csv")
 
@@ -134,9 +141,9 @@ def make_video(tmp_folder, filename_base, pool=DefaultPool(), dates=None, speed_
     
     print ("Combining frames into movie")
     
-    remove("%s.avi"%filename_base)
-    remove("%s.mp4"%filename_base)
-    remove("%s.m4v"%filename_base)
+    safe_remove("%s.avi"%filename_base)
+    safe_remove("%s.mp4"%filename_base)
+    safe_remove("%s.m4v"%filename_base)
     
     
     

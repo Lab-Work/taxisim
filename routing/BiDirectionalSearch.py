@@ -4,7 +4,6 @@ from Node import *
 import heapq
 from random import randint
 from datetime import datetime
-from traffic_estimation import plot_estimates
 import timeit
 
 HEURISTIC_DISCOUNT = .75
