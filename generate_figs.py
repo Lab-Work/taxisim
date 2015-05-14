@@ -4,6 +4,6 @@ Created on Wed Jan 28 11:08:56 2015
 
 @author: brian
 """
-from analysis import plot_link_speeds
+from traffic_estimation.plot_estimates import restore_video
 
-plot_link_speeds.plot_many_speeds()
+restore_video("tmp_vid", "zscore_vid", 'tmp_zscores.pickle')

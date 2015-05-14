@@ -9,10 +9,12 @@ from os import system, remove, path, mkdir
 from shutil import rmtree
 from multiprocessing import Pool
 from subprocess import Popen, PIPE
+import pickle
 
 from db_functions import db_main, db_travel_times
 from routing.Map import Map
 from functools import partial
+
 
 
 
@@ -158,6 +160,20 @@ def make_video(tmp_folder, filename_base, pool=DefaultPool(), dates=None, speed_
     cmd = 'avconv -i %s.avi %s.m4v' % (filename_base, filename_base)
     print(cmd)
     system(cmd)
+
+
+
+def restore_video(tmp_folder, filename_base, pickle_file):
+    pool = Pool(8)
+    with open(pickle_file, 'r') as f:
+        (date_list, speed_dicts) = pickle.load(f)
+    
+    make_video(tmp_folder, filename_base, pool=pool, dates=date_list, speed_dicts=speed_dicts)
+    
+    
+    
+    
+
 
 
 def plot_many_speeds():

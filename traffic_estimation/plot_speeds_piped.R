@@ -40,8 +40,8 @@ if(plot_type=="absolute"){
 	value_granularity=10
 	legend_granularity=1
 } else if(plot_type=="zscore"){
-	lo_pace=-5
-	hi_pace=5
+	lo_pace=-10
+	hi_pace=10
 	value_granularity=30
 	legend_granularity=1
 }
@@ -98,7 +98,7 @@ plot(clon,clat,type="n",
 abline(v = clon*lon_meters, col = "black", lwd = 2000)
 
 
-segments(t$start_lon, t$start_lat, x1=t$end_lon, y1=t$end_lat, col=cols, lwd=1)
+segments(t$start_lon, t$start_lat, x1=t$end_lon, y1=t$end_lat, col=cols, lwd=3)
 #arrows(t$start_lon, t$start_lat, x1=t$end_lon, y1=t$end_lat, col=cols, lwd=1, angle=15, length=.1)
 
 
