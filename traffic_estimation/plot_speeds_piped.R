@@ -39,11 +39,13 @@ if(plot_type=="absolute"){
 	hi_pace = 15
 	value_granularity=10
 	legend_granularity=1
+	pace_conversion_factor = 26.8224
 } else if(plot_type=="zscore"){
-	lo_pace=-10
-	hi_pace=10
+	lo_pace=-5
+	hi_pace=5
 	value_granularity=30
 	legend_granularity=1
+	pace_conversion_factor = 1
 }
 
 #print(my_title)
@@ -77,7 +79,7 @@ t$end_lon = t$end_lon * lon_meters
 t$pace[is.na(t$pace)] = 0
 
 #convert the pace to minutes per mile
-t$pace = t$pace * 26.8224
+t$pace = t$pace * pace_conversion_factor
 
 cvals = linearScale(t$pace, lo_pace, hi_pace)
 cols = rgb(jet.colors(cvals)/255)

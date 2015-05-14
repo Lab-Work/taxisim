@@ -80,15 +80,16 @@ def plot_speed(road_map, dt, filename, pace_dict=None):
     # Convert table to CSV format and pipe it to the Rscript
     csv_lines = [",".join(map(str, line)) for line in lines]
     print "CSV_lines count: " + str(len(csv_lines))
-    data = "\n".join(csv_lines)   
+    data = "\n".join(csv_lines)
     
     
     #print "\n".join(csv_lines[:1000])
 
     p1 = Popen(['Rscript', 'traffic_estimation/plot_speeds_piped.R', filename, title, plot_type], stdout=PIPE, stdin=PIPE)
     _ = p1.communicate(data) # R output is discarded
-    #del(_)
-    print(_)
+    #print(_)
+    del(_)
+    
 
     #remove(filename + ".csv")
 
@@ -168,8 +169,7 @@ def restore_video(tmp_folder, filename_base, pickle_file):
     with open(pickle_file, 'r') as f:
         (date_list, speed_dicts) = pickle.load(f)
     
-    make_video(tmp_folder, filename_base, pool=pool, dates=date_list, speed_dicts=speed_dicts)
-    
+    make_video(tmp_folder, filename_base, pool=pool, dates=date_list[:3], speed_dicts=speed_dicts[:3])
     
     
     
