@@ -20,18 +20,37 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ##3) Modules / Folders
 
-### /routing
+### [/routing](routing)
+Includes all of the code relating to loading, representing, and processing road network graphs, and performing shortest-path routing queries on them.  Specifically, it can:
+- Load/save road networks from/to CSV files, using the same format as AwesomeStitch
+- Efficiently match coordinates to the nearest node in the graph using a KD-Tree
+- Partition road networks using a KD-Tree
+- Partition road networks using the [KaHip](https://github.com/schulzchristian/KaHIP/) library.  KaHip needs to be downloaded and compiled before these particular functions work.
+- Generate figures that show the color-coded partitioning results
+- Identify strongly-connected components using kosajaru's algorithm, and prune the graph down to one large strongly-connected component
+- Efficiently erform shortest-path routing queries using Bidirectional Dijkstra's algorithm, Bidirectional A\*, and Bidirectional ArcFlags
+- Perform the preprocessing steps which are necessary for ArcFlags
 
-### /db_functions
+### [/traffic_estimation](traffic_estimation)
+All code relating to estimating traffic conditions from taxi GPS data.  Specifically, it is designed to estimate the travel times on links of the road network, even when the data only contains origins, destinations, and total travel times.  In other words, no intermediate way-points or paths are required - they are estimated simultaneously with the traffic conditions.  Specifically, this module can:
+- Estimate the traffic conditions from GPS data
+- Perform cross-validation experiments to quantify the prediction accuracy
+- Produce graphics which show the estimated traffic conditions
 
-### /traffic_estimation
+### [/db_functions](db_functions)
+This module allows the code connect to a PostgreSQL database for saving/loading data and results.  Specifically, it can:
+- Load taxi trips (which contain GPS coordinates, times, etc.) from the database
+- Load and save traffic estimates (i.e. travel times on each link) into the database.  Travel times are indexed by the date/time that they occured, since they generally change over time
 
-### /mpi_parallel
+### [/mpi_parallel](mpi_parallel)
+This module is built on top of **mpi4py**.  It contains a convenient framework for performing large-scale parallel tasks on supercomputers.  The basic idea is similar to the **map** portion of a map-reduce operation - it applies the same function to a large set of inputs at the same time.  The usage is similar to Python's built-in **map** or **multiprocessing.Pool.map()*.  However, it is specialized to quickly disseminate data that is used by all of the workers.  The reason behind this is that many of the applications of parallel processing in this library use the *same* road network in each instance.
 
-### /nyc_map4
+
+### [/nyc_map4](nyc_map4)
 Not a module - contains a sample map of New York City, which can be used with the remainder of the code.  The data format is explained below:
 
 **node.csv:**
+
 1. node_id - a unique identifier for each node
 2. is_complete
 3. num_in_links - the number of incoming links to this node
@@ -46,6 +65,7 @@ Not a module - contains a sample map of New York City, which can be used with th
 
 
 **links.csv:**
+
 1. link_id
 2. begin_node_id
 3. end_node_id
