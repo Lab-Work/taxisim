@@ -32,36 +32,36 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 Not a module - contains a sample map of New York City, which can be used with the remainder of the code.  The data format is explained below:
 
 **node.csv:**
-0. node_id - a unique identifier for each node
-1. is_complete
-2. num_in_links - the number of incoming links to this node
-3. num_out_links - the number f outgoing links from this node
-4. osm_traffic_controller
-5. xcoord - the longitude of this node
-6. ycoord - the latitude of this node
-7. osm_changeset - the changeset ID from OSM
-8. birth_timestamp - the time this node was loaded by AwesomeStitch
-9. death_timestamp - the time this node was deleted in AwesomeStitch
-10. region_id
+1. node_id - a unique identifier for each node
+2. is_complete
+3. num_in_links - the number of incoming links to this node
+4. num_out_links - the number f outgoing links from this node
+5. osm_traffic_controller
+6. xcoord - the longitude of this node
+7. ycoord - the latitude of this node
+8. osm_changeset - the changeset ID from OSM
+9. birth_timestamp - the time this node was loaded by AwesomeStitch
+10. death_timestamp - the time this node was deleted in AwesomeStitch
+11. region_id
 
 
 **links.csv:**
-0. link_id
-1. begin_node_id
-2. end_node_id
-3. begin_angle
-4. end_angle
-5. street_length
-6. osm_name
-7. osm_class
-8. osm_way_id
-9. startX
-10. startY
-11. endX
-12. endY
-13. osm_changeset
-14. birth_timestamp
-15. death_timestamp
+1. link_id
+2. begin_node_id
+3. end_node_id
+4. begin_angle
+5. end_angle
+6. street_length
+7. osm_name
+8. osm_class
+9. osm_way_id
+10. startX
+11. startY
+12. endX
+13. endY
+14. osm_changeset
+15. birth_timestamp
+16. death_timestamp
 
 
 
