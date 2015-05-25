@@ -41,6 +41,7 @@ All code relating to estimating traffic conditions from taxi GPS data.  Specific
 This module allows the code connect to a PostgreSQL database for saving/loading data and results.  Specifically, it can:
 - Load taxi trips (which contain GPS coordinates, times, etc.) from the database
 - Load and save traffic estimates (i.e. travel times on each link) into the database.  Travel times are indexed by the date/time that they occured, since they generally change over time
+- Load and save ArcFlags, which are produced in the [/routing](routing) module.  These are also indexed by the date/time, since the ArcFlags depend on the traffic conditions, which change over time.
 
 ### [/mpi_parallel](mpi_parallel)
 This module is built on top of **mpi4py**.  It contains a convenient framework for performing large-scale parallel tasks on supercomputers.  The basic idea is similar to the **map** portion of a map-reduce operation - it applies the same function to a large set of inputs at the same time.  The usage is similar to Python's built-in **map** or **multiprocessing.Pool.map()*.  However, it is specialized to quickly disseminate data that is used by all of the workers.  The reason behind this is that many of the applications of parallel processing in this library use the *same* road network in each instance.
