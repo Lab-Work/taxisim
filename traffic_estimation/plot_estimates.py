@@ -165,11 +165,11 @@ def make_video(tmp_folder, filename_base, pool=DefaultPool(), dates=None, speed_
 
 
 def restore_video(tmp_folder, filename_base, pickle_file):
-    pool = Pool(8)
+    pool = Pool(2)
     with open(pickle_file, 'r') as f:
         (date_list, speed_dicts) = pickle.load(f)
     
-    make_video(tmp_folder, filename_base, pool=pool, dates=date_list[:3], speed_dicts=speed_dicts[:3])
+    make_video(tmp_folder, filename_base, pool=pool, dates=date_list, speed_dicts=speed_dicts)
     
     
     

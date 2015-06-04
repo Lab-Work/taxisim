@@ -505,7 +505,7 @@ class Map:
         self.nodes = [node for node in self.nodes if node not in bad_nodes]
         for node in bad_nodes:
             _ = self.nodes_by_id.pop(node.node_id)   
-        del _
+            del _
         
         bad_links = set()        
         # remove links connected to these nodes
@@ -521,7 +521,7 @@ class Map:
         self.links = [link for link in self.links if link not in bad_links]
         for link in bad_links:
             _ = self.links_by_node_id.pop((link.origin_node.node_id, link.connecting_node.node_id))
-        del _
+            del _
         
         # Re-index the link ids, since we have shifted the list around
         for i in xrange(len(self.links)):

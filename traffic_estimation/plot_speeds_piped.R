@@ -1,5 +1,5 @@
 #library(RgoogleMaps)
-clat = 40.773455
+clat = 40.753455
 clon = -73.962880
 z = 12
 
@@ -77,6 +77,8 @@ t$end_lon = t$end_lon * lon_meters
 #print("Computing colors")
 #summary(t$speed)
 t$pace[is.na(t$pace)] = 0
+t = t[t$pace!=0,]
+
 
 #convert the pace to minutes per mile
 t$pace = t$pace * pace_conversion_factor
@@ -92,7 +94,7 @@ cols = rgb(jet.colors(cvals)/255)
 #PlotOnStaticMap(mymap, clat, clon, col="black", pch=15, cex=400)
 #PlotArrowsOnStaticMap(mymap, lat0=t$start_lat, lon0=t$start_lon, lat1=t$end_lat, lon1=t$end_lon, FUN=segments, add=T, col=cols,lwd=3)
 
-size = 8000
+size = 6000
 plot(clon,clat,type="n",
 	xlim=c(clon*lon_meters-size,clon*lon_meters+size),
 	ylim=c(clat*lat_meters-size, clat*lat_meters+size),

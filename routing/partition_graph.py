@@ -82,10 +82,10 @@ def output_clusters(road_map, num_clusters, imbalance, filename, append=False):
     # cluster_filename - the file where cluster data is stored.  This is the file
         # produced by output_clusters()
     # output_filename - a PDF file where the results will be saved
-def plot_map(cluster_filename, output_filename):
+def plot_map(cluster_filename, output_filename, link_filename='[IGNORE]'):
     # Build command to execute R plotting script, and execute it
-    cmd = "Rscript routing/plot_clusters.R %s %s" % (
-        cluster_filename, output_filename)
+    cmd = "Rscript routing/plot_clusters.R %s %s %s" % (
+        cluster_filename, link_filename, output_filename)
     system(cmd)
 
 
@@ -105,6 +105,17 @@ def simple_test():
     plot_map('tmp_cluster.csv', 'graph_clusters.pdf')
     
     return road_map
+
+
+def plot_test():
+    print("Loading")
+    road_map = Map("nyc_map4/nodes_no_nj_imb20_k10.csv", "nyc_map4/links_no_nj_imb20_k10.csv", limit_bbox=Map.reasonable_nyc_bbox)
+    print("Outputting")    
+    output_clusters(road_map, 10, 20, 'tmp_cluster.csv')
+    
+    print("Drawing")
+    plot_map('tmp_cluster.csv', 'graph_clusters.pdf', link_filename='nyc_map4/links_no_nj_imb20_k10.csv')
+
 
 
 #  Identifies the Western-most cluster.  This is NJ
@@ -284,7 +295,7 @@ def run_many_tests():
     #k_vals = [2,3,4,5,6,7,8,9,10,15,20,30,40,50,100]
     
     imb_vals = [20]
-    k_vals = [4,10]
+    k_vals = [1,2,3,4,5,6,7,8,9,10,15,20,25,30,35,40,45,50]
     for imb in imb_vals:        
         for k in k_vals:
             
