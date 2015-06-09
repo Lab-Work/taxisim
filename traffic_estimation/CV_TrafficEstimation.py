@@ -9,6 +9,9 @@ from random import shuffle
 from multiprocessing import Pool
 from matplotlib import pyplot as plt
 import csv
+from datetime import datetime, timedelta
+
+from db_functions import db_main, db_trip
 
 
 
@@ -73,7 +76,6 @@ def run_fold((train, test, road_map, distance_weighting, model_idle_time, initia
     #test = [trip for trip in test if trip.dup_times != None]
     #train = [trip for trip in train if trip.dup_times != None]    
     
-    print (str(initial_idle_time) + " --> " + str(road_map.idle_link.time))    
     
 
     # Return everything
@@ -115,7 +117,6 @@ def run_fold_learning_curve((train, test, road_map, distance_weighting)):
         d3 = datetime.now()
         print("Finished testing model of size " + str(size) + " after " + str(d3 - d2))
         print((train_avg_error, test_avg_error))        
-        print("Estimated idle time : " + str(road_map.idle_link.time))
         
         
         train_avg_errors.append(train_avg_error)
@@ -192,10 +193,10 @@ def output_trips(trips, filename):
     # num_fold - the K in k-fold cross validation
     # num_cpus - Will run this many folds in parallel
     # distance_weighting - the method for computing the weight.  see compute_weight()
-def perform_cv(full_data, nodes_fn, links_fn, num_folds, pool, distance_weighting=None, model_idle_time=False, initial_idle_time=0):
-    # shuffle(full_data)
+def perform_cv(full_data, nodes_fn, links_fn, num_folds, pool, fn_prefix= "", distance_weighting=None, model_idle_time=False, initial_idle_time=0):
+    shuffle(full_data)
 
-    fn_prefix = dw_string(distance_weighting) + "_" + str(model_idle_time) + "_" + str(initial_idle_time)
+    print(str(datetime.now()))
     print ("Running " + str(fn_prefix) + " on " + str(len(full_data)) + " trips.")
 
 
@@ -209,7 +210,7 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, pool, distance_weightin
 
     
     
-    fn_prefix = dw_string(distance_weighting) + "_" + str(model_idle_time) + "_" + str(initial_idle_time)
+    #fn_prefix = dw_string(distance_weighting) + "_" + str(model_idle_time) + "_" + str(initial_idle_time)
     print("outputting " + str(fn_prefix))
     #output_trips(train_set, "results/" + fn_prefix + "train_trips.csv")
     #output_trips(test_set, "results/" + fn_prefix + "test_trips.csv")
@@ -230,6 +231,14 @@ def perform_cv(full_data, nodes_fn, links_fn, num_folds, pool, distance_weightin
     plt.xlabel("Iteration")
     plt.ylabel("Avg Relative Error")
     plt.savefig("results/" + fn_prefix + "perc_error.png")
+    
+    
+    with open('results/traffic_estimation_error_%s.csv' % fn_prefix, 'w') as f:
+        w  = csv.writer(f)
+        w.writerow(['Iteration','train_err', 'test_err', 'train_perc', 'test_perc'])
+        for i in xrange(len(train_avg)):
+            line = [i, train_avg[i], test_avg[i], train_perc[i], test_perc[i]]
+            w.writerow(line)
     """
     
     plt.cla()
@@ -389,6 +398,26 @@ def try_many_kernels():
                 print("Done!")
                 print(d2 - d1)    
                 #perform_cv(trips, "nyc_map4/nodes.csv", "nyc_map4/links.csv", 8, num_cpus=8, use_distance_weighting=False)
+
+
+
+def run_full_day():
+    pool = Pool(8)
+    
+    dates = [datetime(2012,4,15,h) for h in xrange(24)]
+    
+    for start_date in dates:
+        end_date = start_date + timedelta(hours=1)
+        db_main.connect('db_functions/database.conf')
+        trips = db_trip.find_pickup_dt(start_date, end_date)
+        db_main.close()
+        
+        
+        fn_prefix = "2012_4_15_%d" % start_date.hour
+        perform_cv(trips, 'nyc_map4/nodes.csv', 'nyc_map4/links.csv', 8, pool, fn_prefix=fn_prefix)
+
+    
+
 
 
 

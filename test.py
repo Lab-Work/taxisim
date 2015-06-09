@@ -31,4 +31,7 @@ from routing.partition_graph import run_many_tests, simple_test, delete_new_jers
 #delete_new_jersey()
 
 
-restore_video("tmp_vid", "tmp_vid", "tmp_zscores.pickle")
+#restore_video("tmp_vid", "tmp_vid", "tmp_zscores.pickle")
+
+from traffic_estimation.CV_TrafficEstimation import run_full_day
+run_full_day()

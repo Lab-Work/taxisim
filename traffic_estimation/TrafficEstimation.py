@@ -114,8 +114,7 @@ def predict_trip_time(trip, road_map, route=True, proposed=False, max_speed = No
         num_trips = 0
         if(route):
             trip.path_links = bidirectional_search(trip.origin_node, trip.dest_node, use_astar=True, max_speed=max_speed)
-            if(model_idle_time):
-                trip.path_links.append(road_map.idle_link)
+
         
         if(proposed):
             trip.estimated_time = sum([link.proposed_time for link in trip.path_links])
@@ -284,9 +283,7 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_
     # Set initial travel times to average velocity across trips
     avg_velocity = compute_avg_velocity(trips)
     road_map.set_all_link_speeds(avg_velocity)
-    
-    # Set the initial idle time
-    road_map.idle_link.time = initial_idle_time
+
     
     
     iter_avg_errors = []
@@ -352,8 +349,6 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_
             #Links with a positive offset are systematically overestimated - travel times should be decreased
             #Links with a negative offset are systematically underestiamted - travel times should be increased
             for link in road_map.links:
-                if(DEBUG and link==road_map.idle_link):
-                    print("***** " + str(link.offset))
                 if(link.offset > 0):
                     link.proposed_time = link.time / (1 + eps)
                 elif(link.offset < 0):
@@ -362,8 +357,7 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_
                     link.proposed_time = link.time
                 
                 #Constrain the travel time to a physically realistic value
-                if(link != road_map.idle_link):
-                    link.proposed_time = max(link.proposed_time, link.length/MAX_SPEED)
+                link.proposed_time = max(link.proposed_time, link.length/MAX_SPEED)
 
     
             # Inner Loop Step 2 - Evaluate proposed travel times in terms of L1 error
@@ -383,8 +377,6 @@ def estimate_travel_times(road_map, trips, max_iter=20, test_set=None, distance_
                     print("Accepting")
                 # The step decreased the error - accept it!
                 for link in road_map.links:
-                    if(DEBUG and link==road_map.idle_link):
-                        print (">>>" + str(link.proposed_time))
                     link.time = link.proposed_time
                 
                 # Now that the travel times have changed, we need to route the trips again
